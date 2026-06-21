@@ -40,15 +40,16 @@ namespace
     // before the first web context (i.e. the first WebView) is created.
     void applyMemoryPressureSettings()
     {
-        // Note: WhatsApp Web's live JS heap (~1 GB) cannot be reclaimed by cache eviction; these
-        // thresholds keep caches small and, as a last resort, kill a truly runaway web process
-        // (the kill is caught by WebView's crash handler, which reloads the page).
+        // WhatsApp Web's live JS heap (~1-1.5 GB) cannot be reclaimed by cache eviction. Keep normal
+        // usage below every threshold so WebKit does not run routine full GCs that stutter typing;
+        // only act on a genuine runaway. The kill is caught by WebView's crash handler, which reloads.
+        // Set strict before conservative: the setters assert conservative < strict at call time.
         WebKitMemoryPressureSettings* const settings = webkit_memory_pressure_settings_new();
-        webkit_memory_pressure_settings_set_memory_limit(settings, 1536U);           // MB
-        webkit_memory_pressure_settings_set_conservative_threshold(settings, 0.33);  // start releasing caches
-        webkit_memory_pressure_settings_set_strict_threshold(settings, 0.5);         // release all caches
-        webkit_memory_pressure_settings_set_kill_threshold(settings, 1.5);           // kill a runaway process
-        webkit_memory_pressure_settings_set_poll_interval(settings, 15.0);           // seconds
+        webkit_memory_pressure_settings_set_memory_limit(settings, 3072U);          // MB
+        webkit_memory_pressure_settings_set_strict_threshold(settings, 0.8);        // release all caches (~2.4 GB)
+        webkit_memory_pressure_settings_set_conservative_threshold(settings, 0.6);  // start releasing caches (~1.8 GB)
+        webkit_memory_pressure_settings_set_kill_threshold(settings, 1.3);          // kill a runaway process (~4 GB)
+        webkit_memory_pressure_settings_set_poll_interval(settings, 30.0);          // seconds
 
         webkit_website_data_manager_set_memory_pressure_settings(settings);
         webkit_memory_pressure_settings_free(settings);
