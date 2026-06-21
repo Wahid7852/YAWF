@@ -26,9 +26,8 @@ namespace
             return;
         }
 
-        char const* const desktop = std::getenv("XDG_CURRENT_DESKTOP");
-        bool const isGnomeOrKde   = desktop
-            && (std::strstr(desktop, "GNOME") || std::strstr(desktop, "KDE") || std::strstr(desktop, "Plasma"));
+        char const* const desktop      = std::getenv("XDG_CURRENT_DESKTOP");
+        bool const        isGnomeOrKde = desktop && (std::strstr(desktop, "GNOME") || std::strstr(desktop, "KDE") || std::strstr(desktop, "Plasma"));
 
         if (!isGnomeOrKde)
         {
@@ -45,11 +44,11 @@ namespace
         // thresholds keep caches small and, as a last resort, kill a truly runaway web process
         // (the kill is caught by WebView's crash handler, which reloads the page).
         WebKitMemoryPressureSettings* const settings = webkit_memory_pressure_settings_new();
-        webkit_memory_pressure_settings_set_memory_limit(settings, 1536U);          // MB
-        webkit_memory_pressure_settings_set_conservative_threshold(settings, 0.33); // start releasing caches
-        webkit_memory_pressure_settings_set_strict_threshold(settings, 0.5);        // release all caches
-        webkit_memory_pressure_settings_set_kill_threshold(settings, 1.5);          // kill a runaway process
-        webkit_memory_pressure_settings_set_poll_interval(settings, 15.0);          // seconds
+        webkit_memory_pressure_settings_set_memory_limit(settings, 1536U);           // MB
+        webkit_memory_pressure_settings_set_conservative_threshold(settings, 0.33);  // start releasing caches
+        webkit_memory_pressure_settings_set_strict_threshold(settings, 0.5);         // release all caches
+        webkit_memory_pressure_settings_set_kill_threshold(settings, 1.5);           // kill a runaway process
+        webkit_memory_pressure_settings_set_poll_interval(settings, 15.0);           // seconds
 
         webkit_website_data_manager_set_memory_pressure_settings(settings);
         webkit_memory_pressure_settings_free(settings);

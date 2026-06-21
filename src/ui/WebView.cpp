@@ -25,8 +25,7 @@ namespace wil::ui
         // compositing; clamp anything unexpected (including legacy 3-value settings) to ALWAYS.
         WebKitHardwareAccelerationPolicy toHwAccelPolicy(int value)
         {
-            return value == WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER ? WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER
-                                                                      : WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS;
+            return value == WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER ? WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER : WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS;
         }
 
         std::optional<std::string> getSystemLanguage()
@@ -247,10 +246,11 @@ namespace wil::ui
         // holding extra GPU contexts. Media/WebRTC stay enabled so voice/video calls keep working.
         webkit_settings_set_enable_webgl(settings, FALSE);
         webkit_settings_set_enable_2d_canvas_acceleration(settings, FALSE);
-        auto const lowGpuMode    = util::Settings::getInstance().getValue<bool>("web", "low-gpu-mode", false);
-        auto const hwAccelPolicy = lowGpuMode
-            ? WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER
-            : toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
+        auto hwAccelPolicy = toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
+        if (util::Settings::getInstance().getValue<bool>("web", "low-gpu-mode", false))
+        {
+            hwAccelPolicy = WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER;
+        }
         webkit_settings_set_hardware_acceleration_policy(settings, hwAccelPolicy);
         webkit_settings_set_minimum_font_size(settings, util::Settings::getInstance().getValue<int>("web", "min-font-size", 0));
 
@@ -293,9 +293,11 @@ namespace wil::ui
     void WebView::setLowGpuMode(bool enabled)
     {
         auto const settings = webkit_web_view_get_settings(*this);
-        auto const policy    = enabled
-            ? WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER
-            : toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
+        auto       policy   = WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER;
+        if (!enabled)
+        {
+            policy = toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
+        }
         webkit_settings_set_hardware_acceleration_policy(settings, policy);
     }
 
@@ -318,7 +320,7 @@ namespace wil::ui
                           "a.remove();"
                           "})();");
 
-            webkit_web_view_run_javascript(*this, script.c_str(), nullptr, nullptr, nullptr);
+            webkit_web_view_evaluate_javascript(*this, script.c_str(), -1, nullptr, nullptr, nullptr, nullptr, nullptr);
         }
         else
         {
