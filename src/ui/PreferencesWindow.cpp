@@ -13,6 +13,7 @@ namespace wil::ui
         , m_switchStartMinimized{nullptr}
         , m_switchNotificationSounds{nullptr}
         , m_comboboxHwAccel{nullptr}
+        , m_comboboxTheme{nullptr}
         , m_entryUserAgent{nullptr}
     {
         Gtk::Switch* switchCloseToTray = nullptr;
@@ -42,6 +43,12 @@ namespace wil::ui
         m_comboboxHwAccel->append(_("Always"));
         m_comboboxHwAccel->append(_("Never"));
 
+        refBuilder->get_widget("combobox_theme", m_comboboxTheme);
+        m_comboboxTheme->signal_changed().connect(sigc::mem_fun(*this, &PreferencesWindow::onThemeChanged));
+        m_comboboxTheme->append(_("None"));
+        m_comboboxTheme->append(_("Reduce Motion"));
+        m_comboboxTheme->append(_("Thin Scrollbars"));
+
         Gtk::Switch* switchAllowPermissions = nullptr;
         refBuilder->get_widget("switch_allow_permissions", switchAllowPermissions);
         switchAllowPermissions->signal_state_set().connect(sigc::mem_fun(*this, &PreferencesWindow::onAllowPermissionsChanged), false);
@@ -70,6 +77,7 @@ namespace wil::ui
         switchAllowPermissions->set_state(util::Settings::getInstance().getValue<bool>("web", "allow-permissions"));
         switchLowGpuMode->set_state(util::Settings::getInstance().getValue<bool>("web", "low-gpu-mode", false));
         m_entryUserAgent->set_text(util::Settings::getInstance().getValue<Glib::ustring>("web", "user-agent", ""));
+        m_comboboxTheme->set_active(util::Settings::getInstance().getValue<int>("web", "theme", 0));
         spinMinFontSize->set_value(util::Settings::getInstance().getValue<int>("web", "min-font-size", 0));
     }
 
@@ -176,6 +184,13 @@ namespace wil::ui
         auto active = m_comboboxHwAccel->get_active_row_number();
         m_webView->setHwAccelPolicy(static_cast<WebKitHardwareAccelerationPolicy>(active));
         util::Settings::getInstance().setValue("web", "hw-accel", active);
+    }
+
+    void PreferencesWindow::onThemeChanged() const
+    {
+        auto const active = m_comboboxTheme->get_active_row_number();
+        m_webView->setTheme(active);
+        util::Settings::getInstance().setValue("web", "theme", active);
     }
 
     void PreferencesWindow::onMinFontSizeChanged(Gtk::SpinButton* spinButtonMinFontSize) const

@@ -28,6 +28,7 @@ namespace wil::ui
             void onUserAgentChanged() const;
             bool onUserAgentFocusOut(GdkEventFocus* event) const;
             void onHwAccelChanged() const;
+            void onThemeChanged() const;
             void onMinFontSizeChanged(Gtk::SpinButton* spinButtonMinFontSize) const;
 
         private:
@@ -37,6 +38,7 @@ namespace wil::ui
             Gtk::Switch*       m_switchStartMinimized;
             Gtk::Switch*       m_switchNotificationSounds;
             Gtk::ComboBoxText* m_comboboxHwAccel;
+            Gtk::ComboBoxText* m_comboboxTheme;
             Gtk::Entry*        m_entryUserAgent;
     };
 }

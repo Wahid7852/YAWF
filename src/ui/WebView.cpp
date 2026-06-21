@@ -173,6 +173,23 @@ namespace wil::ui
 
             return cssContent;
         }
+
+        // Built-in theme presets, keyed by the combo box index used in the preferences window.
+        // Deliberately uses generic selectors (not WhatsApp's obfuscated class names) so the
+        // presets keep working as the web app changes.
+        std::string themeCss(int index)
+        {
+            switch (index)
+            {
+                case 1:  // Reduce Motion (also lowers CPU/GPU from animations)
+                    return "*, *::before, *::after { animation-duration: 0.001s !important; animation-delay: 0s !important; "
+                           "transition-duration: 0.001s !important; }";
+                case 2:  // Thin Scrollbars
+                    return "::-webkit-scrollbar { width: 8px !important; height: 8px !important; }";
+                default:  // None
+                    return "";
+            }
+        }
     }
 
     namespace detail
@@ -261,6 +278,7 @@ namespace wil::ui
         {
             applyCustomCss(cssFilePath);
         }
+        addStyleSheet(themeCss(util::Settings::getInstance().getValue<int>("web", "theme", 0)));
 
         webkit_web_view_load_uri(*this, WHATSAPP_WEB_URI);
     }
@@ -462,12 +480,33 @@ namespace wil::ui
 
     void WebView::applyCustomCss(const std::string& cssFilePath)
     {
-        auto const cssContent = loadCssContent(cssFilePath);
+        addStyleSheet(loadCssContent(cssFilePath));
+    }
 
-        auto* styleSheet
-            = webkit_user_style_sheet_new(cssContent.c_str(), WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES, WEBKIT_USER_STYLE_LEVEL_USER, nullptr, nullptr);
+    void WebView::addStyleSheet(std::string const& css)
+    {
+        if (css.empty())
+        {
+            return;
+        }
+
+        auto* styleSheet = webkit_user_style_sheet_new(css.c_str(), WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES, WEBKIT_USER_STYLE_LEVEL_USER, nullptr, nullptr);
 
         auto* manager = webkit_web_view_get_user_content_manager(*this);
         webkit_user_content_manager_add_style_sheet(manager, styleSheet);
+    }
+
+    void WebView::setTheme(int index)
+    {
+        auto* manager = webkit_web_view_get_user_content_manager(*this);
+        webkit_user_content_manager_remove_all_style_sheets(manager);
+
+        auto const cssFilePath = Glib::get_user_config_dir() + "/" + WIL_NAME + "/web.css";
+        if (cssFileExists(cssFilePath))
+        {
+            applyCustomCss(cssFilePath);
+        }
+
+        addStyleSheet(themeCss(index));
     }
 }

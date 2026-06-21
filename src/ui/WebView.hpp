@@ -25,6 +25,7 @@ namespace wil::ui
             void            setHwAccelPolicy(WebKitHardwareAccelerationPolicy policy);
             void            setLowGpuMode(bool enabled);
             void            setUserAgent(std::string const& userAgent);
+            void            setTheme(int index);
             void            sendRequest(std::string url);
             void            openPhoneNumber(std::string const& phoneNumber);
             void            zoomIn();
@@ -43,6 +44,7 @@ namespace wil::ui
             void onWebProcessTerminated(WebKitWebProcessTerminationReason reason);
             bool onTimeout();
             void applyCustomCss(const std::string& cssFilePath);
+            void addStyleSheet(std::string const& css);
 
             friend void detail::loadChanged(WebKitWebView*, WebKitLoadEvent, gpointer);
             friend void detail::webProcessTerminated(WebKitWebView*, WebKitWebProcessTerminationReason, gpointer);
