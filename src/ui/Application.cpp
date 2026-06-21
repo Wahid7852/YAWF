@@ -20,8 +20,9 @@ namespace wil::ui
                 return WIL_APP_ID;
             }
 
-            auto suffix = util::profileName();
-            std::replace_if(suffix.begin(), suffix.end(), [](char c) { return !std::isalnum(static_cast<unsigned char>(c)); }, '_');
+            auto       suffix     = util::profileName();
+            auto const isNotAlnum = [](char c) { return !std::isalnum(static_cast<unsigned char>(c)); };
+            std::replace_if(suffix.begin(), suffix.end(), isNotAlnum, '_');
             if (std::isdigit(static_cast<unsigned char>(suffix.front())))
             {
                 suffix.insert(suffix.begin(), '_');
