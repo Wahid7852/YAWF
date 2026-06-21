@@ -243,9 +243,6 @@ namespace wil::ui
     {
         auto const webContext = webkit_web_view_get_context(*this);
 
-        // WhatsApp Web is a single long-lived SPA, so a browsing cache only wastes memory.
-        webkit_web_context_set_cache_model(webContext, WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
-
         auto configDir   = Glib::get_user_config_dir();
         auto cssFilePath = configDir + "/" + WIL_NAME + "/web.css";
 
@@ -276,9 +273,6 @@ namespace wil::ui
         auto const userAgent = util::Settings::getInstance().getValue<Glib::ustring>("web", "user-agent", "");
         webkit_settings_set_user_agent(settings, userAgent.empty() ? USER_AGENT : userAgent.c_str());
         webkit_settings_set_enable_developer_extras(settings, TRUE);
-        // Trim memory/GPU work that a single-page chat client never benefits from.
-        webkit_settings_set_enable_page_cache(settings, FALSE);
-        webkit_settings_set_enable_smooth_scrolling(settings, FALSE);
         // WhatsApp Web has no 3D content; keeping WebGL and GPU-accelerated 2D canvas off avoids
         // holding extra GPU contexts. Media/WebRTC stay enabled so voice/video calls keep working.
         webkit_settings_set_enable_webgl(settings, FALSE);
