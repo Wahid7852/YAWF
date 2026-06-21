@@ -243,6 +243,10 @@ namespace wil::ui
         // Trim memory/GPU work that a single-page chat client never benefits from.
         webkit_settings_set_enable_page_cache(settings, FALSE);
         webkit_settings_set_enable_smooth_scrolling(settings, FALSE);
+        // WhatsApp Web has no 3D content; keeping WebGL and GPU-accelerated 2D canvas off avoids
+        // holding extra GPU contexts. Media/WebRTC stay enabled so voice/video calls keep working.
+        webkit_settings_set_enable_webgl(settings, FALSE);
+        webkit_settings_set_enable_2d_canvas_acceleration(settings, FALSE);
         auto const hwAccelPolicy = toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
         webkit_settings_set_hardware_acceleration_policy(settings, hwAccelPolicy);
         webkit_settings_set_minimum_font_size(settings, util::Settings::getInstance().getValue<int>("web", "min-font-size", 0));
