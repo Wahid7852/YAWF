@@ -24,6 +24,7 @@ namespace wil::ui
             WebKitLoadEvent getLoadStatus() const noexcept;
             void            setHwAccelPolicy(WebKitHardwareAccelerationPolicy policy);
             void            setLowGpuMode(bool enabled);
+            void            setUserAgent(std::string const& userAgent);
             void            sendRequest(std::string url);
             void            openPhoneNumber(std::string const& phoneNumber);
             void            zoomIn();

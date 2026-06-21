@@ -236,8 +236,9 @@ namespace wil::ui
             webkit_web_context_set_spell_checking_languages(webContext, spellCheckingLangs);
         }
 
-        auto const settings = webkit_web_view_get_settings(*this);
-        webkit_settings_set_user_agent(settings, USER_AGENT);
+        auto const settings  = webkit_web_view_get_settings(*this);
+        auto const userAgent = util::Settings::getInstance().getValue<Glib::ustring>("web", "user-agent", "");
+        webkit_settings_set_user_agent(settings, userAgent.empty() ? USER_AGENT : userAgent.c_str());
         webkit_settings_set_enable_developer_extras(settings, TRUE);
         // Trim memory/GPU work that a single-page chat client never benefits from.
         webkit_settings_set_enable_page_cache(settings, FALSE);
@@ -288,6 +289,13 @@ namespace wil::ui
     {
         auto const settings = webkit_web_view_get_settings(*this);
         webkit_settings_set_hardware_acceleration_policy(settings, policy);
+    }
+
+    void WebView::setUserAgent(std::string const& userAgent)
+    {
+        auto const settings = webkit_web_view_get_settings(*this);
+        webkit_settings_set_user_agent(settings, userAgent.empty() ? USER_AGENT : userAgent.c_str());
+        webkit_web_view_reload(*this);
     }
 
     void WebView::setLowGpuMode(bool enabled)

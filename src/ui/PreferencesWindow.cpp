@@ -13,6 +13,7 @@ namespace wil::ui
         , m_switchStartMinimized{nullptr}
         , m_switchNotificationSounds{nullptr}
         , m_comboboxHwAccel{nullptr}
+        , m_entryUserAgent{nullptr}
     {
         Gtk::Switch* switchCloseToTray = nullptr;
         refBuilder->get_widget("switch_close_to_tray", switchCloseToTray);
@@ -49,6 +50,10 @@ namespace wil::ui
         refBuilder->get_widget("switch_low_gpu_mode", switchLowGpuMode);
         switchLowGpuMode->signal_state_set().connect(sigc::mem_fun(*this, &PreferencesWindow::onLowGpuModeChanged), false);
 
+        refBuilder->get_widget("entry_user_agent", m_entryUserAgent);
+        m_entryUserAgent->signal_activate().connect(sigc::mem_fun(*this, &PreferencesWindow::onUserAgentChanged));
+        m_entryUserAgent->signal_focus_out_event().connect(sigc::mem_fun(*this, &PreferencesWindow::onUserAgentFocusOut));
+
         Gtk::SpinButton* spinMinFontSize = nullptr;
         refBuilder->get_widget("spinbutton_min_font_size", spinMinFontSize);
         spinMinFontSize->signal_value_changed().connect(sigc::bind(sigc::mem_fun(*this, &PreferencesWindow::onMinFontSizeChanged), spinMinFontSize));
@@ -64,6 +69,7 @@ namespace wil::ui
         m_comboboxHwAccel->set_active(hwAccel > 1 ? 1 : hwAccel);
         switchAllowPermissions->set_state(util::Settings::getInstance().getValue<bool>("web", "allow-permissions"));
         switchLowGpuMode->set_state(util::Settings::getInstance().getValue<bool>("web", "low-gpu-mode", false));
+        m_entryUserAgent->set_text(util::Settings::getInstance().getValue<Glib::ustring>("web", "user-agent", ""));
         spinMinFontSize->set_value(util::Settings::getInstance().getValue<int>("web", "min-font-size", 0));
     }
 
@@ -142,6 +148,25 @@ namespace wil::ui
     {
         m_webView->setLowGpuMode(state);
         util::Settings::getInstance().setValue("web", "low-gpu-mode", state);
+
+        return false;
+    }
+
+    void PreferencesWindow::onUserAgentChanged() const
+    {
+        auto const userAgent = m_entryUserAgent->get_text();
+        if (userAgent == util::Settings::getInstance().getValue<Glib::ustring>("web", "user-agent", ""))
+        {
+            return;
+        }
+
+        util::Settings::getInstance().setValue("web", "user-agent", userAgent);
+        m_webView->setUserAgent(userAgent.raw());
+    }
+
+    bool PreferencesWindow::onUserAgentFocusOut(GdkEventFocus*) const
+    {
+        onUserAgentChanged();
 
         return false;
     }

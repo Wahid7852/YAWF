@@ -4,6 +4,7 @@
 #include <gtkmm/window.h>
 #include <gtkmm/switch.h>
 #include <gtkmm/comboboxtext.h>
+#include <gtkmm/entry.h>
 #include <gtkmm/spinbutton.h>
 #include "TrayIcon.hpp"
 #include "WebView.hpp"
@@ -24,6 +25,8 @@ namespace wil::ui
             bool onPreferDarkThemeChanged(bool state) const;
             bool onAllowPermissionsChanged(bool state) const;
             bool onLowGpuModeChanged(bool state) const;
+            void onUserAgentChanged() const;
+            bool onUserAgentFocusOut(GdkEventFocus* event) const;
             void onHwAccelChanged() const;
             void onMinFontSizeChanged(Gtk::SpinButton* spinButtonMinFontSize) const;
 
@@ -34,5 +37,6 @@ namespace wil::ui
             Gtk::Switch*       m_switchStartMinimized;
             Gtk::Switch*       m_switchNotificationSounds;
             Gtk::ComboBoxText* m_comboboxHwAccel;
+            Gtk::Entry*        m_entryUserAgent;
     };
 }
