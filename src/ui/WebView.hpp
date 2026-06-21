@@ -23,7 +23,6 @@ namespace wil::ui
             void            refresh();
             WebKitLoadEvent getLoadStatus() const noexcept;
             void            setHwAccelPolicy(WebKitHardwareAccelerationPolicy policy);
-            void            setLowGpuMode(bool enabled);
             void            setUserAgent(std::string const& userAgent);
             void            setTheme(int index);
             void            sendRequest(std::string url);

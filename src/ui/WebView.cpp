@@ -273,11 +273,7 @@ namespace wil::ui
         auto const userAgent = util::Settings::getInstance().getValue<Glib::ustring>("web", "user-agent", "");
         webkit_settings_set_user_agent(settings, userAgent.empty() ? USER_AGENT : userAgent.c_str());
         webkit_settings_set_enable_developer_extras(settings, TRUE);
-        auto hwAccelPolicy = toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
-        if (util::Settings::getInstance().getValue<bool>("web", "low-gpu-mode", false))
-        {
-            hwAccelPolicy = WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER;
-        }
+        auto const hwAccelPolicy = toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
         webkit_settings_set_hardware_acceleration_policy(settings, hwAccelPolicy);
         webkit_settings_set_minimum_font_size(settings, util::Settings::getInstance().getValue<int>("web", "min-font-size", 0));
 
@@ -323,17 +319,6 @@ namespace wil::ui
         auto const settings = webkit_web_view_get_settings(*this);
         webkit_settings_set_user_agent(settings, userAgent.empty() ? USER_AGENT : userAgent.c_str());
         webkit_web_view_reload(*this);
-    }
-
-    void WebView::setLowGpuMode(bool enabled)
-    {
-        auto const settings = webkit_web_view_get_settings(*this);
-        auto       policy   = WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER;
-        if (!enabled)
-        {
-            policy = toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
-        }
-        webkit_settings_set_hardware_acceleration_policy(settings, policy);
     }
 
     void WebView::sendRequest(std::string url)

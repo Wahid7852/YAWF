@@ -53,10 +53,6 @@ namespace wil::ui
         refBuilder->get_widget("switch_allow_permissions", switchAllowPermissions);
         switchAllowPermissions->signal_state_set().connect(sigc::mem_fun(*this, &PreferencesWindow::onAllowPermissionsChanged), false);
 
-        Gtk::Switch* switchLowGpuMode = nullptr;
-        refBuilder->get_widget("switch_low_gpu_mode", switchLowGpuMode);
-        switchLowGpuMode->signal_state_set().connect(sigc::mem_fun(*this, &PreferencesWindow::onLowGpuModeChanged), false);
-
         refBuilder->get_widget("entry_user_agent", m_entryUserAgent);
         m_entryUserAgent->signal_activate().connect(sigc::mem_fun(*this, &PreferencesWindow::onUserAgentChanged));
         m_entryUserAgent->signal_focus_out_event().connect(sigc::mem_fun(*this, &PreferencesWindow::onUserAgentFocusOut));
@@ -75,7 +71,6 @@ namespace wil::ui
         auto const hwAccel = util::Settings::getInstance().getValue<int>("web", "hw-accel", 0);
         m_comboboxHwAccel->set_active(hwAccel > 1 ? 1 : hwAccel);
         switchAllowPermissions->set_state(util::Settings::getInstance().getValue<bool>("web", "allow-permissions"));
-        switchLowGpuMode->set_state(util::Settings::getInstance().getValue<bool>("web", "low-gpu-mode", false));
         m_entryUserAgent->set_text(util::Settings::getInstance().getValue<Glib::ustring>("web", "user-agent", ""));
         m_comboboxTheme->set_active(util::Settings::getInstance().getValue<int>("web", "theme", 0));
         spinMinFontSize->set_value(util::Settings::getInstance().getValue<int>("web", "min-font-size", 0));
@@ -148,14 +143,6 @@ namespace wil::ui
     bool PreferencesWindow::onAllowPermissionsChanged(bool state) const
     {
         util::Settings::getInstance().setValue("web", "allow-permissions", state);
-
-        return false;
-    }
-
-    bool PreferencesWindow::onLowGpuModeChanged(bool state) const
-    {
-        m_webView->setLowGpuMode(state);
-        util::Settings::getInstance().setValue("web", "low-gpu-mode", state);
 
         return false;
     }

@@ -24,7 +24,6 @@ namespace wil::ui
             bool onNotificationSoundsChanged(bool state) const;
             bool onPreferDarkThemeChanged(bool state) const;
             bool onAllowPermissionsChanged(bool state) const;
-            bool onLowGpuModeChanged(bool state) const;
             void onUserAgentChanged() const;
             bool onUserAgentFocusOut(GdkEventFocus* event) const;
             void onHwAccelChanged() const;
