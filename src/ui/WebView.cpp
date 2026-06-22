@@ -253,6 +253,10 @@ namespace wil::ui
         auto const cookieManager = webkit_web_context_get_cookie_manager(webContext);
         webkit_cookie_manager_set_persistent_storage(cookieManager, cookieStore.c_str(), WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
 
+        // Use the web-browser cache model so WhatsApp's static assets are kept on disk and warm
+        // reloads (after a crash-recovery or a manual refresh) don't refetch the whole SPA.
+        webkit_web_context_set_cache_model(webContext, WEBKIT_CACHE_MODEL_WEB_BROWSER);
+
         g_signal_connect(*this, "load-changed", G_CALLBACK(detail::loadChanged), this);
         g_signal_connect(*this, "permission-request", G_CALLBACK(permissionRequest), nullptr);
         g_signal_connect(*this, "decide-policy", G_CALLBACK(decidePolicy), nullptr);
