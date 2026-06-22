@@ -390,7 +390,8 @@ namespace wil::ui
         // fires the beforeinput/input events WhatsApp's editor listens for, so the change registers
         // (a direct DOM edit would be ignored). With no selection, insert the empty pair and park
         // the caret between the markers so the user can type the formatted text.
-        auto const esc = [](std::string const& s) {
+        auto const esc = [](std::string const& s)
+        {
             auto out = std::string{};
             for (auto const c : s)
             {
@@ -421,10 +422,9 @@ namespace wil::ui
     {
         // Strip WhatsApp markdown markers (``` then * _ ~) from the selection and re-insert the
         // plain text via execCommand so the editor registers the change.
-        static char const* const script =
-            "(function(){var sel=window.getSelection();if(!sel)return;var text=sel.toString();"
-            "if(text.length===0)return;"
-            "document.execCommand('insertText',false,text.replace(/```/g,'').replace(/[*_~]/g,''));})();";
+        static char const* const script = "(function(){var sel=window.getSelection();if(!sel)return;var text=sel.toString();"
+                                          "if(text.length===0)return;"
+                                          "document.execCommand('insertText',false,text.replace(/```/g,'').replace(/[*_~]/g,''));})();";
 
         webkit_web_view_evaluate_javascript(*this, script, -1, nullptr, nullptr, nullptr, nullptr, nullptr);
     }
@@ -436,8 +436,8 @@ namespace wil::ui
             return;
         }
 
-        gchar* buffer    = nullptr;
-        gsize bufferSize = 0;
+        gchar* buffer     = nullptr;
+        gsize  bufferSize = 0;
         try
         {
             pixbuf->save_to_buffer(buffer, bufferSize, "png");

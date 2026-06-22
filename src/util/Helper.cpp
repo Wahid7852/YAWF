@@ -41,11 +41,11 @@ namespace wil::util
         // The commands use shell features ($(...), redirection) so they run via the shell.
         auto const tools = std::vector<std::pair<std::string, std::string>>{
             {"spectacle", "spectacle -rbno '" + path + "'"},                // KDE
-            {"grim", "grim -g \"$(slurp)\" '" + path + "'"},                 // wlroots (Sway/Hyprland)
-            {"gnome-screenshot", "gnome-screenshot -a -f '" + path + "'"},   // GNOME
-            {"maim", "maim -s '" + path + "'"},                              // X11
-            {"flameshot", "flameshot gui --raw > '" + path + "'"},           // X11/Wayland
-            {"import", "import '" + path + "'"},                             // X11 (ImageMagick)
+            {"grim", "grim -g \"$(slurp)\" '" + path + "'"},                // wlroots (Sway/Hyprland)
+            {"gnome-screenshot", "gnome-screenshot -a -f '" + path + "'"},  // GNOME
+            {"maim", "maim -s '" + path + "'"},                             // X11
+            {"flameshot", "flameshot gui --raw > '" + path + "'"},          // X11/Wayland
+            {"import", "import '" + path + "'"},                            // X11 (ImageMagick)
         };
 
         for (auto const& [bin, command] : tools)
