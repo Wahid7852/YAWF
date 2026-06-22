@@ -149,6 +149,30 @@
                 <property name="top-attach">4</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkLabel" id="label_ctrl_enter_send">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">start</property>
+                <property name="label" translatable="yes">Send with Ctrl+Enter</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">5</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSwitch" id="switch_ctrl_enter_send">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="tooltip-text" translatable="yes">Enter inserts a new line; Ctrl+Enter sends the message</property>
+                <property name="halign">end</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">5</property>
+              </packing>
+            </child>
           </object>
         </child>
         <child type="tab">

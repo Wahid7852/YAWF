@@ -292,6 +292,7 @@ namespace wil::ui
         addStyleSheet(themeCss(util::Settings::getInstance().getValue<int>("web", "theme", 0)));
 
         injectCrashRecoveryScript();
+        injectCtrlEnterSendScript();
 
         webkit_web_view_load_uri(*this, WHATSAPP_WEB_URI);
     }
@@ -530,6 +531,13 @@ namespace wil::ui
     void WebView::onLoadStatusChanged(WebKitLoadEvent loadEvent)
     {
         m_loadStatus = loadEvent;
+
+        if (loadEvent == WEBKIT_LOAD_FINISHED)
+        {
+            // Re-seed the composer behavior flag on every (re)load from the saved preference.
+            setCtrlEnterSend(util::Settings::getInstance().getValue<bool>("general", "ctrl-enter-send", false));
+        }
+
         m_signalLoadStatus.emit(m_loadStatus);
     }
 
@@ -629,6 +637,43 @@ namespace wil::ui
         auto* const manager = webkit_web_view_get_user_content_manager(*this);
         webkit_user_content_manager_add_script(manager, script);
         webkit_user_script_unref(script);
+    }
+
+    void WebView::injectCtrlEnterSendScript()
+    {
+        // Optional Telegram-style composer behavior: Enter inserts a newline, Ctrl+Enter sends.
+        // Off unless window.__wilCtrlEnterSend is set (seeded from the preference on every load,
+        // see onLoadStatusChanged, and updated live by setCtrlEnterSend). We remap by replaying a
+        // trusted-looking Enter: Shift+Enter for a newline, plain Enter to send. The handler ignores
+        // synthetic (untrusted) events so it never recurses. Depends on WhatsApp's composer
+        // internals, so it is the most fragile feature and stays opt-in.
+        static char const* const source = R"JS(
+        (function() {
+            document.addEventListener('keydown', function(e) {
+                if (!window.__wilCtrlEnterSend || !e.isTrusted || e.key !== 'Enter') return;
+                var t = e.target;
+                if (!t || !t.isContentEditable) return;
+                e.preventDefault();
+                e.stopPropagation();
+                var send = e.ctrlKey || e.metaKey;
+                t.dispatchEvent(new KeyboardEvent('keydown', {
+                    key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+                    bubbles: true, cancelable: true, shiftKey: !send
+                }));
+            }, true);
+        })();
+        )JS";
+
+        auto* const script  = webkit_user_script_new(source, WEBKIT_USER_CONTENT_INJECT_TOP_FRAME, WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_END, nullptr, nullptr);
+        auto* const manager = webkit_web_view_get_user_content_manager(*this);
+        webkit_user_content_manager_add_script(manager, script);
+        webkit_user_script_unref(script);
+    }
+
+    void WebView::setCtrlEnterSend(bool enabled)
+    {
+        auto const script = std::string{"window.__wilCtrlEnterSend = "} + (enabled ? "true" : "false") + ";";
+        webkit_web_view_evaluate_javascript(*this, script.c_str(), -1, nullptr, nullptr, nullptr, nullptr, nullptr);
     }
 
     void WebView::addStyleSheet(std::string const& css)

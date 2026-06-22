@@ -32,6 +32,7 @@ namespace wil::ui
             void            pasteImage(Glib::RefPtr<Gdk::Pixbuf> const& pixbuf);
             void            wrapSelection(std::string const& prefix, std::string const& suffix);
             void            clearFormatting();
+            void            setCtrlEnterSend(bool enabled);
             void            zoomIn();
             void            zoomOut();
             void            resetZoom();
@@ -50,6 +51,7 @@ namespace wil::ui
             void applyCustomCss(const std::string& cssFilePath);
             void addStyleSheet(std::string const& css);
             void injectCrashRecoveryScript();
+            void injectCtrlEnterSendScript();
 
             friend void detail::loadChanged(WebKitWebView*, WebKitLoadEvent, gpointer);
             friend void detail::webProcessTerminated(WebKitWebView*, WebKitWebProcessTerminationReason, gpointer);

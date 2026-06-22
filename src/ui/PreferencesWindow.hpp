@@ -22,6 +22,7 @@ namespace wil::ui
             bool onStartMinimizedChanged(bool state) const;
             bool onAutostartChanged(bool state) const;
             bool onNotificationSoundsChanged(bool state) const;
+            bool onCtrlEnterSendChanged(bool state) const;
             bool onPreferDarkThemeChanged(bool state) const;
             bool onAllowPermissionsChanged(bool state) const;
             void onUserAgentChanged() const;

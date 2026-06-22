@@ -33,6 +33,10 @@ namespace wil::ui
         refBuilder->get_widget("switch_notification_sounds", m_switchNotificationSounds);
         m_switchNotificationSounds->signal_state_set().connect(sigc::mem_fun(*this, &PreferencesWindow::onNotificationSoundsChanged), false);
 
+        Gtk::Switch* switchCtrlEnterSend = nullptr;
+        refBuilder->get_widget("switch_ctrl_enter_send", switchCtrlEnterSend);
+        switchCtrlEnterSend->signal_state_set().connect(sigc::mem_fun(*this, &PreferencesWindow::onCtrlEnterSendChanged), false);
+
         Gtk::Switch* switchPreferDarkTheme = nullptr;
         refBuilder->get_widget("switch_prefer_dark_theme", switchPreferDarkTheme);
         switchPreferDarkTheme->signal_state_set().connect(sigc::mem_fun(*this, &PreferencesWindow::onPreferDarkThemeChanged), false);
@@ -67,6 +71,7 @@ namespace wil::ui
         m_switchStartMinimized->set_state(util::Settings::getInstance().getValue<bool>("general", "start-minimized"));
         switchAutostart->set_state(util::Settings::getInstance().getValue<bool>("general", "autostart"));
         m_switchNotificationSounds->set_state(util::Settings::getInstance().getValue<bool>("general", "notification-sounds", true));
+        switchCtrlEnterSend->set_state(util::Settings::getInstance().getValue<bool>("general", "ctrl-enter-send", false));
         switchPreferDarkTheme->set_state(util::Settings::getInstance().getValue<bool>("appearance", "prefer-dark-theme"));
         auto const hwAccel = util::Settings::getInstance().getValue<int>("web", "hw-accel", 0);
         m_comboboxHwAccel->set_active(hwAccel > 1 ? 1 : hwAccel);
@@ -126,6 +131,14 @@ namespace wil::ui
     bool PreferencesWindow::onNotificationSoundsChanged(bool state) const
     {
         util::Settings::getInstance().setValue("general", "notification-sounds", state);
+
+        return false;
+    }
+
+    bool PreferencesWindow::onCtrlEnterSendChanged(bool state) const
+    {
+        util::Settings::getInstance().setValue("general", "ctrl-enter-send", state);
+        m_webView->setCtrlEnterSend(state);
 
         return false;
     }
