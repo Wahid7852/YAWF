@@ -31,6 +31,7 @@ namespace wil::ui
             bool            pasteClipboardImage();
             void            pasteImage(Glib::RefPtr<Gdk::Pixbuf> const& pixbuf);
             void            wrapSelection(std::string const& prefix, std::string const& suffix);
+            void            clearFormatting();
             void            zoomIn();
             void            zoomOut();
             void            resetZoom();

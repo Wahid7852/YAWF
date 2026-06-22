@@ -416,6 +416,18 @@ namespace wil::ui
         webkit_web_view_evaluate_javascript(*this, script.c_str(), -1, nullptr, nullptr, nullptr, nullptr, nullptr);
     }
 
+    void WebView::clearFormatting()
+    {
+        // Strip WhatsApp markdown markers (``` then * _ ~) from the selection and re-insert the
+        // plain text via execCommand so the editor registers the change.
+        static char const* const script =
+            "(function(){var sel=window.getSelection();if(!sel)return;var text=sel.toString();"
+            "if(text.length===0)return;"
+            "document.execCommand('insertText',false,text.replace(/```/g,'').replace(/[*_~]/g,''));})();";
+
+        webkit_web_view_evaluate_javascript(*this, script, -1, nullptr, nullptr, nullptr, nullptr, nullptr);
+    }
+
     void WebView::pasteImage(Glib::RefPtr<Gdk::Pixbuf> const& pixbuf)
     {
         if (!pixbuf)

@@ -179,6 +179,15 @@ namespace wil::ui
                     }
                     break;
 
+                case GDK_KEY_n:
+                case GDK_KEY_N:
+                    if (shift)
+                    {
+                        m_webView.clearFormatting();
+                        return true;
+                    }
+                    break;
+
                 default:
                     break;
             }
