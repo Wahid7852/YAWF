@@ -1,52 +1,70 @@
 # WasIstLos
 
-An unofficial WhatsApp desktop application for Linux.
+An unofficial WhatsApp desktop application for Linux — a maintained revival fork
+of [xeco23/WasIstLos](https://github.com/xeco23/WasIstLos), written in C++ with
+gtkmm and WebKitGTK.
 
-> [!NOTE]
-> We are looking for flatpak and snap maintainers. Please get in touch if you are interested!
-
-<p align="left">
-    <a href="https://flathub.org/apps/details/com.github.xeco23.WasIstLos">
-        <img align="center" alt="Download on Flathub" src="https://flathub.org/assets/badges/flathub-badge-en.png" width="200">
-    </a>
-    <a href="https://snapcraft.io/wasistlos">
-        <img align="center" alt="Get it from the Snap Store" src="https://snapcraft.io/static/images/badges/en/snap-store-black.svg" width="200">
-    </a>
-</p>
+![App Window](screenshot/app.png)
 
 [![Action Status](https://github.com/Wahid7852/WasIstLos/workflows/Linter/badge.svg)](https://github.com/Wahid7852/WasIstLos/actions/workflows/linter.yml)
 [![Action Status](https://github.com/Wahid7852/WasIstLos/workflows/Build/badge.svg)](https://github.com/Wahid7852/WasIstLos/actions/workflows/build.yml)
 [![Action Status](https://github.com/Wahid7852/WasIstLos/workflows/Install/badge.svg)](https://github.com/Wahid7852/WasIstLos/actions/workflows/install.yml)
 [![Action Status](https://github.com/Wahid7852/WasIstLos/workflows/Release/badge.svg)](https://github.com/Wahid7852/WasIstLos/actions/workflows/release.yml)
-[![POEditor](https://img.shields.io/badge/Translations-POEditor-brightgreen)](https://poeditor.com/join/project/jMGkxVn3vN)
-
-![App Window](screenshot/app.png)
 
 
 ## About
 
-WasIstLos is an unofficial WhatsApp desktop application written in C++ with the help of gtkmm and WebKitGtk libraries.
-Check out [wiki](https://github.com/Wahid7852/WasIstLos/wiki) for further details.
+WasIstLos wraps WhatsApp Web in a native WebKitGTK window and adds desktop
+integration (tray, notifications, autostart) plus a set of power-user features
+you don't get in the browser. This fork focuses on **reliability** (it recovers
+on its own when WhatsApp Web crashes) and **productivity** (clipboard image
+paste, Telegram-style formatting shortcuts, screenshot-to-chat).
 
 
 ## Features
 
-* Features come with WhatsApp Web
-  * WhatsApp specific keyboard shortcuts work with *Alt* key instead of *Cmd*
-* Zoom in/out
-* System tray icon
-* Notification sounds
-* Autostart with system
-* Fullscreen mode
-* Show/Hide headerbar by pressing *Alt+H*
-* Localization support in system language
-* Spell checking in system language. You need to install the corresponding dictionary to get this working i.e. `hunspell-en_us` package for US English
-* Open chat by phone number
+### Desktop integration
+* Everything WhatsApp Web offers, in a dedicated window
+* System tray icon, notification sounds, autostart with the system
+* Fullscreen mode and show/hide header bar (*Alt+H*)
+* Zoom in/out, configurable minimum font size and theme tweaks
+* Multiple accounts via `--profile <name>` (isolated session per profile)
+* Localization and spell checking in your system language (install the matching
+  dictionary, e.g. `hunspell-en_us`)
+* Open a chat directly by phone number
+
+### Reliability
+* **Auto-recovery**: if WhatsApp Web hits its "We encountered a problem"
+  crash screen, the app reloads itself automatically (with a backoff so it
+  never loops endlessly)
+* Software-decode video workaround for glitchy hardware video paths
+* Web-browser cache model so reloads come back quickly from disk
+
+### Power-user shortcuts
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+V` / `Ctrl+Shift+V` | Paste an image from the clipboard into the composer |
+| `Ctrl+Shift+S` | Capture a screen region and drop it straight into the chat |
+| `Ctrl+B` | Wrap selection in `*bold*` |
+| `Ctrl+I` | Wrap selection in `_italic_` |
+| `Ctrl+Shift+X` | Wrap selection in `~strikethrough~` |
+| `Ctrl+Shift+M` | Wrap selection in ` ```monospace``` ` |
+| `Ctrl+Shift+N` | Clear formatting from the selection |
+
+* **Clipboard image paste** works even where WhatsApp Web's own paste does not —
+  copy a screenshot and paste it directly.
+* **Screenshot to chat** auto-detects your desktop's region-capture tool
+  (Spectacle on KDE, gnome-screenshot on GNOME, grim + slurp on wlroots, or
+  maim/flameshot/ImageMagick on X11).
+* **Send with Ctrl+Enter** (optional, off by default): enable it in Preferences
+  to make *Enter* insert a newline and *Ctrl+Enter* send the message.
+
+The full list is always available in-app via *Ctrl+?*.
 
 
 ## Using WasIstLos
 
-The application is available from a number of Linux distributions:
+The upstream project is available from a number of Linux distributions:
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/wasistlos.svg)](https://repology.org/project/wasistlos/versions)
 
@@ -59,7 +77,9 @@ The application is available from a number of Linux distributions:
 * webkit2gtk-4.1
 * ayatana-appindicator3-0.1
 * libcanberra
-* libhunspell (Optional for spell checking)
+* libhunspell (optional, for spell checking)
+* A region-screenshot tool for *Ctrl+Shift+S* (optional): one of `spectacle`,
+  `gnome-screenshot`, `grim`+`slurp`, `maim`, `flameshot`, or ImageMagick
 
 
 ## Build & Run
@@ -81,6 +101,11 @@ make update-translation
 ./wasistlos
 ```
 
+> [!NOTE]
+> The GTK `.ui` resources are compiled at CMake **configure** time. If you change
+> a file under `resource/ui/`, re-run `cmake` before building so the change is
+> embedded.
+
 ### Local installation
 
 ```bash
@@ -88,6 +113,12 @@ make update-translation
 # You'll probably need administrator privileges for this
 make install
 ```
+
+> [!TIP]
+> If a distro package already owns `/usr/bin/wasistlos` and you don't want a
+> system upgrade to overwrite your build, install to `/usr/local` instead
+> (configure with `-DCMAKE_INSTALL_PREFIX=/usr/local`). It wins on `PATH` and
+> `XDG_DATA_DIRS`, and your package manager never touches `/usr/local`.
 
 ### Uninstall
 
@@ -133,3 +164,10 @@ Please read [contributing](CONTRIBUTING.md).
 ### Code Contributors
 
 [![Code Contributors](https://opencollective.com/WasIstLos/contributors.svg?width=880&button=false)](https://github.com/Wahid7852/WasIstLos/graphs/contributors)
+
+
+## Credits
+
+This is a fork of the original [WasIstLos](https://github.com/xeco23/WasIstLos)
+by [xeco23](https://github.com/xeco23) and contributors. All credit for the
+original application goes to them.
