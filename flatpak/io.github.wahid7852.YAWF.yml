@@ -1,0 +1,128 @@
+# Flatpak manifest scaffold for the Flathub submission.
+#
+# NOTE: This is a starting point, not a verified build. Before submitting to
+# Flathub you must:
+#   * pick a current runtime version and test-build with flatpak-builder,
+#   * fill in real `commit`/`sha256` for every module source,
+#   * confirm the gtkmm-3 + ayatana-appindicator stack builds against the runtime
+#     (WebKitGTK 4.1 is provided by org.gnome.Platform).
+#
+# Build locally with:
+#   flatpak-builder --user --install --force-clean build-flatpak flatpak/io.github.wahid7852.YAWF.yml
+
+app-id: io.github.wahid7852.YAWF
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+command: yawf
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=io.github.wahid7852.YAWF
+  - --filesystem=xdg-download
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/doc
+  - /share/man
+  - '*.la'
+  - '*.a'
+
+modules:
+  - name: libsigc++-2
+    buildsystem: meson
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/libsigc++/2.12/libsigc++-2.12.1.tar.xz
+        sha256: TODO
+
+  - name: glibmm
+    buildsystem: meson
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/glibmm/2.66/glibmm-2.66.7.tar.xz
+        sha256: TODO
+
+  - name: cairomm
+    buildsystem: meson
+    config-opts:
+      - -Dbuild-tests=false
+    sources:
+      - type: archive
+        url: https://www.cairographics.org/releases/cairomm-1.14.5.tar.xz
+        sha256: TODO
+
+  - name: pangomm
+    buildsystem: meson
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/pangomm/2.46/pangomm-2.46.4.tar.xz
+        sha256: TODO
+
+  - name: atkmm
+    buildsystem: meson
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/atkmm/2.28/atkmm-2.28.4.tar.xz
+        sha256: TODO
+
+  - name: gtkmm-3
+    buildsystem: meson
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/gtkmm/3.24/gtkmm-3.24.9.tar.xz
+        sha256: TODO
+
+  # Ayatana stack for the tray icon (StatusNotifierItem).
+  - name: libayatana-ido
+    buildsystem: cmake-ninja
+    sources:
+      - type: git
+        url: https://github.com/AyatanaIndicators/libayatana-ido.git
+        tag: '0.10.4'
+
+  - name: libayatana-indicator
+    buildsystem: cmake-ninja
+    sources:
+      - type: git
+        url: https://github.com/AyatanaIndicators/libayatana-indicator.git
+        tag: '0.9.4'
+
+  - name: libdbusmenu-gtk3
+    buildsystem: autotools
+    config-opts:
+      - --with-gtk=3
+      - --disable-dumper
+      - --disable-tests
+      - --disable-gtk-doc
+    sources:
+      - type: archive
+        url: https://launchpad.net/libdbusmenu/16.04/16.04.0/+download/libdbusmenu-16.04.0.tar.gz
+        sha256: TODO
+
+  - name: libayatana-appindicator
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DENABLE_BINDINGS_MONO=NO
+      - -DENABLE_BINDINGS_VALA=NO
+    sources:
+      - type: git
+        url: https://github.com/AyatanaIndicators/libayatana-appindicator.git
+        tag: '0.5.93'
+
+  - name: yawf
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: git
+        url: https://github.com/Wahid7852/WasIstLos.git
+        tag: v2.0.0
