@@ -30,7 +30,7 @@ namespace wil::util
         auto path = std::string{};
         try
         {
-            auto const fd = Glib::file_open_tmp(path, "wasistlos-XXXXXX.png");
+            auto const fd = Glib::file_open_tmp(path, "yawf-XXXXXX.png");
             ::close(fd);
         }
         catch (Glib::FileError const& error)

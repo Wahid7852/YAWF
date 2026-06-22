@@ -61,7 +61,7 @@ namespace wil::util
         if (autostart)
         {
             constexpr auto const possibleDesktopFilePaths = std::array<char const*, 3>{"/usr/local/share/applications/" WIL_APP_ID ".desktop",
-                "/usr/share/applications/" WIL_APP_ID ".desktop", "/snap/wasistlos/current/share/applications/" WIL_APP_ID ".desktop"};
+                "/usr/share/applications/" WIL_APP_ID ".desktop", "/snap/" WIL_NAME "/current/share/applications/" WIL_APP_ID ".desktop"};
 
             auto const it = std::find_if(possibleDesktopFilePaths.begin(), possibleDesktopFilePaths.end(),
                 [](auto const& elem)
