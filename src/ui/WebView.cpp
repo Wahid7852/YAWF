@@ -383,6 +383,39 @@ namespace wil::ui
         return true;
     }
 
+    void WebView::wrapSelection(std::string const& prefix, std::string const& suffix)
+    {
+        // Surround the current selection with WhatsApp markdown markers. execCommand('insertText')
+        // fires the beforeinput/input events WhatsApp's editor listens for, so the change registers
+        // (a direct DOM edit would be ignored). With no selection, insert the empty pair and park
+        // the caret between the markers so the user can type the formatted text.
+        auto const esc = [](std::string const& s) {
+            auto out = std::string{};
+            for (auto const c : s)
+            {
+                if (c == '\\' || c == '\'')
+                {
+                    out.push_back('\\');
+                }
+                out.push_back(c);
+            }
+            return out;
+        };
+
+        auto script = std::string{};
+        script.append("(function(){var sel=window.getSelection();if(!sel)return;"
+                      "var pre='");
+        script.append(esc(prefix));
+        script.append("';var suf='");
+        script.append(esc(suffix));
+        script.append("';var text=sel.toString();"
+                      "if(text.length===0){document.execCommand('insertText',false,pre+suf);"
+                      "for(var i=0;i<suf.length;i++){sel.modify('move','backward','character');}return;}"
+                      "document.execCommand('insertText',false,pre+text+suf);})();");
+
+        webkit_web_view_evaluate_javascript(*this, script.c_str(), -1, nullptr, nullptr, nullptr, nullptr, nullptr);
+    }
+
     void WebView::pasteImage(Glib::RefPtr<Gdk::Pixbuf> const& pixbuf)
     {
         if (!pixbuf)

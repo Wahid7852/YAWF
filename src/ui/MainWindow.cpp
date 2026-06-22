@@ -106,6 +106,7 @@ namespace wil::ui
     {
         if (keyEvent->state & GDK_CONTROL_MASK)
         {
+            auto const shift = static_cast<bool>(keyEvent->state & GDK_SHIFT_MASK);
             switch (keyEvent->keyval)
             {
                 case GDK_KEY_P:
@@ -137,6 +138,43 @@ namespace wil::ui
                     // so WhatsApp's normal text paste keeps working.
                     if (m_webView.pasteClipboardImage())
                     {
+                        return true;
+                    }
+                    break;
+
+                // Telegram-style markdown: wrap the selection in WhatsApp's formatting markers.
+                case GDK_KEY_b:
+                case GDK_KEY_B:
+                    if (!shift)
+                    {
+                        m_webView.wrapSelection("*", "*");
+                        return true;
+                    }
+                    break;
+
+                case GDK_KEY_i:
+                case GDK_KEY_I:
+                    if (!shift)
+                    {
+                        m_webView.wrapSelection("_", "_");
+                        return true;
+                    }
+                    break;
+
+                case GDK_KEY_x:
+                case GDK_KEY_X:
+                    if (shift)
+                    {
+                        m_webView.wrapSelection("~", "~");
+                        return true;
+                    }
+                    break;
+
+                case GDK_KEY_m:
+                case GDK_KEY_M:
+                    if (shift)
+                    {
+                        m_webView.wrapSelection("```", "```");
                         return true;
                     }
                     break;

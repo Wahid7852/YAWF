@@ -30,6 +30,7 @@ namespace wil::ui
             void            openPhoneNumber(std::string const& phoneNumber);
             bool            pasteClipboardImage();
             void            pasteImage(Glib::RefPtr<Gdk::Pixbuf> const& pixbuf);
+            void            wrapSelection(std::string const& prefix, std::string const& suffix);
             void            zoomIn();
             void            zoomOut();
             void            resetZoom();
