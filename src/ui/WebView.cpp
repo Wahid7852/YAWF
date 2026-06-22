@@ -499,7 +499,10 @@ namespace wil::ui
                 } catch (e) { return []; }
             }
             setInterval(function() {
-                if (!document.body || document.body.innerText.indexOf(PHRASE) === -1) return;
+                // textContent, not innerText: innerText forces a full synchronous reflow every
+                // tick (it returns *rendered* text), which stutters WhatsApp's large DOM. textContent
+                // just walks nodes and still contains the crash phrase.
+                if (!document.body || document.body.textContent.indexOf(PHRASE) === -1) return;
                 var times = recent();
                 if (times.length >= 3) return;
                 times.push(Date.now());
