@@ -37,6 +37,7 @@ namespace wil::ui
             void onShow();
             void onQuit();
             void onFullscreen();
+            void onScreenshot();
             void onZoomIn();
             void onZoomOut();
             void onResetZoom();

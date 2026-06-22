@@ -1,12 +1,17 @@
 #include "MainWindow.hpp"
+#include <unistd.h>
+#include <iostream>
 #include <glibmm/i18n.h>
+#include <gdkmm/pixbuf.h>
 #include <gtkmm/grid.h>
 #include <gtkmm/button.h>
 #include <gtkmm/modelbutton.h>
 #include <gtkmm/aboutdialog.h>
+#include <gtkmm/messagedialog.h>
 #include <gtkmm/shortcutswindow.h>
 #include "Application.hpp"
 #include "Config.hpp"
+#include "../util/Helper.hpp"
 #include "../util/Settings.hpp"
 
 namespace wil::ui
@@ -188,6 +193,15 @@ namespace wil::ui
                     }
                     break;
 
+                case GDK_KEY_s:
+                case GDK_KEY_S:
+                    if (shift)
+                    {
+                        onScreenshot();
+                        return true;
+                    }
+                    break;
+
                 default:
                     break;
             }
@@ -362,6 +376,31 @@ namespace wil::ui
     void MainWindow::onFullscreen()
     {
         m_fullscreen ? unfullscreen() : fullscreen();
+    }
+
+    void MainWindow::onScreenshot()
+    {
+        auto const path = util::captureScreenRegionToPng();
+        if (!path.has_value())
+        {
+            auto dialog = Gtk::MessageDialog{*this, _("Screenshot failed"), false, Gtk::MESSAGE_WARNING, Gtk::BUTTONS_OK, true};
+            dialog.set_secondary_text(_("No supported screenshot tool was found. Install one of: "
+                                        "spectacle (KDE), gnome-screenshot (GNOME), grim + slurp (wlroots), maim, flameshot, or ImageMagick."));
+            dialog.run();
+            return;
+        }
+
+        try
+        {
+            auto const pixbuf = Gdk::Pixbuf::create_from_file(path.value());
+            m_webView.pasteImage(pixbuf);
+        }
+        catch (Glib::Error const& error)
+        {
+            std::cerr << "MainWindow: Failed to load screenshot: " << error.what() << std::endl;
+        }
+
+        ::unlink(path.value().c_str());
     }
 
     void MainWindow::onZoomIn()
