@@ -285,6 +285,8 @@ namespace wil::ui
         }
         addStyleSheet(themeCss(util::Settings::getInstance().getValue<int>("web", "theme", 0)));
 
+        injectCrashRecoveryScript();
+
         webkit_web_view_load_uri(*this, WHATSAPP_WEB_URI);
     }
 
@@ -475,6 +477,42 @@ namespace wil::ui
     void WebView::applyCustomCss(const std::string& cssFilePath)
     {
         addStyleSheet(loadCssContent(cssFilePath));
+    }
+
+    void WebView::injectCrashRecoveryScript()
+    {
+        // WhatsApp Web's JS can crash inside an otherwise healthy web process and show its own
+        // error screen ("We encountered a problem running WhatsApp. Please reload..."). The native
+        // web-process-terminated handler never fires for that, so recover from the page side: poll
+        // for the phrase and reload. A sessionStorage budget (3 reloads / 60s) mirrors the native
+        // crash-loop backoff so a permanently broken page doesn't busy-reload. Keys on the English
+        // phrase, which is the pragmatic signal for the reported case.
+        static char const* const source = R"JS(
+        (function() {
+            var PHRASE = "We encountered a problem running WhatsApp";
+            var KEY = "wil_crash_reloads";
+            function recent() {
+                try {
+                    var now = Date.now();
+                    return JSON.parse(sessionStorage.getItem(KEY) || "[]")
+                        .filter(function(t) { return now - t < 60000; });
+                } catch (e) { return []; }
+            }
+            setInterval(function() {
+                if (!document.body || document.body.innerText.indexOf(PHRASE) === -1) return;
+                var times = recent();
+                if (times.length >= 3) return;
+                times.push(Date.now());
+                try { sessionStorage.setItem(KEY, JSON.stringify(times)); } catch (e) {}
+                location.reload();
+            }, 3000);
+        })();
+        )JS";
+
+        auto* const script  = webkit_user_script_new(source, WEBKIT_USER_CONTENT_INJECT_TOP_FRAME, WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_END, nullptr, nullptr);
+        auto* const manager = webkit_web_view_get_user_content_manager(*this);
+        webkit_user_content_manager_add_script(manager, script);
+        webkit_user_script_unref(script);
     }
 
     void WebView::addStyleSheet(std::string const& css)
