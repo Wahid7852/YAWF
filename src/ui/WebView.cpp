@@ -181,6 +181,31 @@ namespace wil::ui
             return FALSE;
         }
 
+        // Receives messages the injected scripts post to window.webkit.messageHandlers.yawf:
+        // "dberror" triggers IndexedDB recovery, anything else is logged for diagnostics.
+        void scriptMessageReceived(WebKitUserContentManager*, WebKitJavascriptResult* result, gpointer userData)
+        {
+            auto* const value = webkit_javascript_result_get_js_value(result);
+            if (!jsc_value_is_string(value))
+            {
+                return;
+            }
+
+            gchar* const raw     = jsc_value_to_string(value);
+            auto const   message = std::string{raw ? raw : ""};
+            g_free(raw);
+
+            auto* const webView = static_cast<WebView*>(userData);
+            if (message == "dberror" && webView)
+            {
+                webView->recoverFromDatabaseError();
+            }
+            else
+            {
+                std::cerr << "WebView: " << message << std::endl;
+            }
+        }
+
         bool cssFileExists(const std::string& filePath)
         {
             auto const file = std::ifstream(filePath);
@@ -239,6 +264,7 @@ namespace wil::ui
         , m_stoppedResponding{false}
         , m_crashCount{0}
         , m_lastCrashTime{0}
+        , m_lastDbRecovery{0}
         , m_signalLoadStatus{}
         , m_signalNotification{}
         , m_signalNotificationClicked{}
@@ -289,6 +315,10 @@ namespace wil::ui
             applyCustomCss(cssFilePath);
         }
         addStyleSheet(themeCss(util::Settings::getInstance().getValue<int>("web", "theme", 0)));
+
+        auto* const contentManager = webkit_web_view_get_user_content_manager(*this);
+        webkit_user_content_manager_register_script_message_handler(contentManager, "yawf");
+        g_signal_connect(contentManager, "script-message-received::yawf", G_CALLBACK(scriptMessageReceived), this);
 
         injectCrashRecoveryScript();
         injectCtrlEnterSendScript();
@@ -536,6 +566,32 @@ namespace wil::ui
         m_signalLoadStatus.emit(m_loadStatus);
     }
 
+    void WebView::recoverFromDatabaseError()
+    {
+        // WhatsApp's local IndexedDB is corrupt and can't be repaired, so clear the site storage
+        // and reload for a clean re-link — WhatsApp's own recommended remedy. Guard against a tight
+        // wipe-and-reload loop if the error keeps recurring.
+        auto const now = g_get_monotonic_time();
+        if (m_lastDbRecovery != 0 && now - m_lastDbRecovery < 180 * G_USEC_PER_SEC)
+        {
+            return;
+        }
+        m_lastDbRecovery = now;
+
+        std::cerr << "WebView: database error detected; clearing site storage and reloading" << std::endl;
+
+        auto* const manager = webkit_web_context_get_website_data_manager(webkit_web_view_get_context(*this));
+        auto const  types   = static_cast<WebKitWebsiteDataTypes>(WEBKIT_WEBSITE_DATA_INDEXEDDB_DATABASES | WEBKIT_WEBSITE_DATA_LOCAL_STORAGE);
+        webkit_website_data_manager_clear(
+            manager, types, 0, nullptr,
+            [](GObject* source, GAsyncResult* result, gpointer userData)
+            {
+                webkit_website_data_manager_clear_finish(WEBKIT_WEBSITE_DATA_MANAGER(source), result, nullptr);
+                webkit_web_view_reload(*static_cast<WebView*>(userData));
+            },
+            this);
+    }
+
     void WebView::onWebProcessTerminated(WebKitWebProcessTerminationReason reason)
     {
         if (reason == WEBKIT_WEB_PROCESS_TERMINATED_BY_API)
@@ -602,7 +658,14 @@ namespace wil::ui
         static char const* const source = R"JS(
         (function() {
             var PHRASE = "We encountered a problem running WhatsApp";
+            var DBERR = "A database error occurred";
             var KEY = "wil_crash_reloads";
+            function post(msg) {
+                try { window.webkit.messageHandlers.yawf.postMessage(msg); } catch (e) {}
+            }
+            window.addEventListener("error", function(e) {
+                post("js-error: " + (e && e.message ? e.message : String(e)));
+            });
             function recent() {
                 try {
                     var now = Date.now();
@@ -612,7 +675,10 @@ namespace wil::ui
             }
             setInterval(function() {
                 // textContent (not innerText) to avoid forcing a reflow on every tick.
-                if (!document.body || document.body.textContent.indexOf(PHRASE) === -1) return;
+                var body = document.body ? document.body.textContent : "";
+                // Corrupt local IndexedDB: hand off to native to clear storage and reload (guarded).
+                if (body.indexOf(DBERR) !== -1) { post("dberror"); return; }
+                if (body.indexOf(PHRASE) === -1) return;
                 var times = recent();
                 if (times.length >= 3) return;
                 times.push(Date.now());

@@ -33,6 +33,7 @@ namespace wil::ui
             void            wrapSelection(std::string const& prefix, std::string const& suffix);
             void            clearFormatting();
             void            setCtrlEnterSend(bool enabled);
+            void            recoverFromDatabaseError();
             void            zoomIn();
             void            zoomOut();
             void            resetZoom();
@@ -61,6 +62,7 @@ namespace wil::ui
             bool                                m_stoppedResponding;
             int                                 m_crashCount;
             gint64                              m_lastCrashTime;
+            gint64                              m_lastDbRecovery;
             sigc::signal<void, WebKitLoadEvent> m_signalLoadStatus;
             sigc::signal<void, bool>            m_signalNotification;
             sigc::signal<void>                  m_signalNotificationClicked;
