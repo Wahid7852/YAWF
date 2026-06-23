@@ -303,6 +303,10 @@ namespace wil::ui
         auto const settings  = webkit_web_view_get_settings(*this);
         auto const userAgent = util::Settings::getInstance().getValue<Glib::ustring>("web", "user-agent", "");
         webkit_settings_set_user_agent(settings, userAgent.empty() ? USER_AGENT : userAgent.c_str());
+        // WebKitGTK force-overrides the UA with a frozen macOS-Safari string for web.whatsapp.com via
+        // its built-in site quirks, which is why the linked device shows "Safari (Mac OS)" and WhatsApp
+        // serves its Safari code path. Disable site quirks so our Chrome-on-Linux UA actually applies.
+        webkit_settings_set_enable_site_specific_quirks(settings, FALSE);
         webkit_settings_set_enable_developer_extras(settings, TRUE);
         auto const hwAccelPolicy = toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
         webkit_settings_set_hardware_acceleration_policy(settings, hwAccelPolicy);
