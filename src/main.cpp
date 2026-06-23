@@ -40,12 +40,9 @@ namespace
     // before the first web context (i.e. the first WebView) is created.
     void applyMemoryPressureSettings()
     {
-        // Only ask WebKit to release caches under memory pressure; never set a kill threshold.
-        // SIGKILLing the web process mid-IndexedDB-write corrupts WhatsApp's local database (the
-        // "A database error occurred on your browser" screen) and logs the user out, so we leave
-        // the kill threshold at its default of 0 (disabled). Thresholds are set high so a normal
-        // ~1-1.5 GB session never triggers routine cache churn. Strict before conservative: the
-        // setters assert conservative < strict.
+        // Only release caches under pressure; never set a kill threshold — SIGKILLing the web
+        // process mid-write corrupts WhatsApp's IndexedDB and logs the user out. Strict before
+        // conservative (the setters assert conservative < strict).
         WebKitMemoryPressureSettings* const settings = webkit_memory_pressure_settings_new();
         webkit_memory_pressure_settings_set_memory_limit(settings, 8192U);           // MB accounting base
         webkit_memory_pressure_settings_set_strict_threshold(settings, 0.85);        // release all caches
@@ -56,21 +53,19 @@ namespace
         webkit_memory_pressure_settings_free(settings);
     }
 
-    // On this stack (Intel + WebKitGTK's GStreamer GL video sink under wlroots) hardware-decoded
-    // frames arrive as DMABuf/external-OES textures the GL sink cannot map ("Cannot map External OES
-    // textures"), so WhatsApp videos render glitched or not at all. Route video through a plain
-    // system-memory path: disable the GL video sink (WebKit falls back to an appsink the compositor
-    // reads) and derank the VA decoders so software decode produces mappable frames. The page's
-    // DMABUF *renderer*, which keeps typing/scrolling smooth, is a separate subsystem and stays on;
-    // this only adds CPU while a video is actually playing. Set here in the UI process before any web
-    // process is spawned so the child inherits them; an explicit user override of either is respected.
+    // Intel + WebKitGTK's GStreamer GL sink can't map hardware-decoded DMABuf frames, so videos
+    // render glitched. Route video through system memory: disable the GL sink and derank the VA
+    // decoders so software decode yields mappable frames. Set before any web process spawns;
+    // explicit user overrides are respected.
     void applyVideoWorkarounds()
     {
         g_setenv("WEBKIT_GST_DISABLE_GL_SINK", "1", FALSE);
         g_setenv("GST_PLUGIN_FEATURE_RANK", "vah264dec:NONE,vah265dec:NONE,vavp8dec:NONE,vavp9dec:NONE,vaav1dec:NONE", FALSE);
 
-        // Keep GStreamer at error level by default so it can't flood the logger; only set when the
-        // user hasn't asked for verbose output, so an explicit GST_DEBUG is still honored.
+        // Avoid the libEGL teardown crash the web process hits on Intel/Mesa under Wayland.
+        g_setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1", FALSE);
+
+        // Cap GStreamer logging so it can't flood the logger (an explicit GST_DEBUG still wins).
         g_setenv("GST_DEBUG", "1", FALSE);
     }
 }
