@@ -99,6 +99,16 @@ namespace wil::ui
                     return TRUE;
                 }
 
+                case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
+                {
+                    // Diagnostic: log every navigation so we can see what an in-chat invite click does.
+                    auto const navigationDecision = WEBKIT_NAVIGATION_POLICY_DECISION(decision);
+                    auto const navigationAction   = webkit_navigation_policy_decision_get_navigation_action(navigationDecision);
+                    auto const request            = webkit_navigation_action_get_request(navigationAction);
+                    std::cerr << "WebView: navigation -> " << webkit_uri_request_get_uri(request) << std::endl;
+                    return FALSE;
+                }
+
                 default:
                     return FALSE;
             }
