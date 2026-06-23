@@ -562,9 +562,41 @@ namespace wil::ui
         {
             // Re-seed the composer behavior flag on every (re)load from the saved preference.
             setCtrlEnterSend(util::Settings::getInstance().getValue<bool>("general", "ctrl-enter-send", false));
+            logNavigatorInfo();
         }
 
         m_signalLoadStatus.emit(m_loadStatus);
+    }
+
+    void WebView::logNavigatorInfo()
+    {
+        // Diagnostic: log what the WhatsApp page actually sees (runs in the page's main world), so we
+        // can tell whether our navigator overrides took and what WhatsApp uses to name the device.
+        static char const* const js = "JSON.stringify({ua:navigator.userAgent,vendor:navigator.vendor,platform:navigator.platform,"
+                                      "uad:(navigator.userAgentData?navigator.userAgentData.platform:null)})";
+        webkit_web_view_evaluate_javascript(
+            *this, js, -1, nullptr, nullptr, nullptr,
+            [](GObject* source, GAsyncResult* result, gpointer)
+            {
+                GError*     error = nullptr;
+                auto* const value = webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(source), result, &error);
+                if (!value)
+                {
+                    if (error)
+                    {
+                        std::cerr << "WebView: navigator probe failed: " << error->message << std::endl;
+                        g_error_free(error);
+                    }
+                    return;
+                }
+                if (jsc_value_is_string(value))
+                {
+                    gchar* const json = jsc_value_to_string(value);
+                    std::cerr << "WebView: navigator " << json << std::endl;
+                    g_free(json);
+                }
+            },
+            nullptr);
     }
 
     void WebView::recoverFromDatabaseError()
@@ -668,11 +700,23 @@ namespace wil::ui
             def("platform", "Linux x86_64");
             try {
                 if (!navigator.userAgentData) {
-                    Object.defineProperty(navigator, "userAgentData", { configurable: true, value: {
-                        brands: [{brand: "Chromium", version: "137"}, {brand: "Google Chrome", version: "137"}, {brand: "Not/A)Brand", version: "24"}],
+                    var brands = [{brand: "Chromium", version: "137"}, {brand: "Google Chrome", version: "137"}, {brand: "Not/A)Brand", version: "24"}];
+                    // Provide a *complete* userAgentData, including getHighEntropyValues(): WhatsApp's
+                    // browser detection calls it, and a partial object would throw and stall linking.
+                    var uad = {
+                        brands: brands,
                         mobile: false,
-                        platform: "Linux"
-                    }});
+                        platform: "Linux",
+                        getHighEntropyValues: function() {
+                            return Promise.resolve({
+                                brands: brands, mobile: false, platform: "Linux", platformVersion: "",
+                                architecture: "x86", bitness: "64", model: "", uaFullVersion: "137.0.0.0",
+                                fullVersionList: brands
+                            });
+                        },
+                        toJSON: function() { return {brands: brands, mobile: false, platform: "Linux"}; }
+                    };
+                    Object.defineProperty(navigator, "userAgentData", { configurable: true, get: function() { return uad; } });
                 }
             } catch (e) {}
         })();
