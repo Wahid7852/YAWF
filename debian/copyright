@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: yawf
-Upstream-Contact: https://github.com/Wahid7852/WasIstLos/issues
-Source: https://github.com/Wahid7852/WasIstLos
+Upstream-Contact: https://github.com/Wahid7852/YAWF/issues
+Source: https://github.com/Wahid7852/YAWF
 
 Files: *
 Copyright: 2020-2022 Enes Hecan <nshecan@gmail.com>

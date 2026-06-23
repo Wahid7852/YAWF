@@ -32,7 +32,7 @@
   <screenshots>
     <screenshot type="default">
       <caption>The main window</caption>
-      <image>https://raw.githubusercontent.com/Wahid7852/WasIstLos/master/screenshot/app.png</image>
+      <image>https://raw.githubusercontent.com/Wahid7852/YAWF/master/screenshot/app.png</image>
     </screenshot>
   </screenshots>
 
@@ -64,7 +64,7 @@
           <li>Faster startup and smoother UI</li>
         </ul>
       </description>
-      <url>https://github.com/Wahid7852/WasIstLos/releases/tag/v${WIL_VERSION}</url>
+      <url>https://github.com/Wahid7852/YAWF/releases/tag/v${WIL_VERSION}</url>
     </release>
   </releases>
 </component>

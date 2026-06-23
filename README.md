@@ -6,9 +6,9 @@ for Linux, written in C++ with gtkmm and WebKitGTK. A maintained fork of
 
 ![App Window](screenshot/app.png)
 
-[![Action Status](https://github.com/Wahid7852/WasIstLos/workflows/Linter/badge.svg)](https://github.com/Wahid7852/WasIstLos/actions/workflows/linter.yml)
-[![Action Status](https://github.com/Wahid7852/WasIstLos/workflows/Build/badge.svg)](https://github.com/Wahid7852/WasIstLos/actions/workflows/build.yml)
-[![Action Status](https://github.com/Wahid7852/WasIstLos/workflows/Release/badge.svg)](https://github.com/Wahid7852/WasIstLos/actions/workflows/release.yml)
+[![Action Status](https://github.com/Wahid7852/YAWF/workflows/Linter/badge.svg)](https://github.com/Wahid7852/YAWF/actions/workflows/linter.yml)
+[![Action Status](https://github.com/Wahid7852/YAWF/workflows/Build/badge.svg)](https://github.com/Wahid7852/YAWF/actions/workflows/build.yml)
+[![Action Status](https://github.com/Wahid7852/YAWF/workflows/Release/badge.svg)](https://github.com/Wahid7852/YAWF/actions/workflows/release.yml)
 
 
 ## About
@@ -64,7 +64,7 @@ The full list is always available in-app via *Ctrl+?*.
 ## Install
 
 Grab a `.deb`, `.AppImage`, or `.snap` from the
-[Releases](https://github.com/Wahid7852/WasIstLos/releases) page, or use a package
+[Releases](https://github.com/Wahid7852/YAWF/releases) page, or use a package
 channel:
 
 * **Arch (AUR)**: `yay -S yawf` — packaging in [`packaging/aur`](packaging/aur)
@@ -159,7 +159,7 @@ Please read [contributing](CONTRIBUTING.md).
 * [xeco23 (Enes Hecan)](https://github.com/xeco23) and the original WasIstLos
   [contributors](https://github.com/xeco23/WasIstLos/graphs/contributors)
 
-[![Code Contributors](https://contrib.rocks/image?repo=Wahid7852/WasIstLos)](https://github.com/Wahid7852/WasIstLos/graphs/contributors)
+[![Code Contributors](https://contrib.rocks/image?repo=Wahid7852/YAWF)](https://github.com/Wahid7852/YAWF/graphs/contributors)
 
 
 ## Credits

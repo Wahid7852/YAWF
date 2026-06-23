@@ -4,14 +4,14 @@ pkgver=2.0.0
 pkgrel=1
 pkgdesc="An unofficial WhatsApp desktop client for Linux (YAWF — Yet Another WhatsApp Fork)"
 arch=('x86_64' 'aarch64')
-url="https://github.com/Wahid7852/WasIstLos"
+url="https://github.com/Wahid7852/YAWF"
 license=('GPL3')
 depends=('gtkmm3' 'webkit2gtk-4.1' 'libayatana-appindicator' 'libcanberra')
 makedepends=('cmake' 'intltool')
 optdepends=('hunspell: spell checking'
             'grim: region screenshots on wlroots compositors'
             'slurp: region selection on wlroots compositors')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/Wahid7852/WasIstLos/archive/refs/tags/v$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/Wahid7852/YAWF/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 _srcdir="WasIstLos-$pkgver"

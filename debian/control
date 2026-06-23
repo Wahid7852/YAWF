@@ -11,7 +11,7 @@ Build-Depends: cmake,
                libcanberra-dev,
                pkgconf
 Standards-Version: 4.5.1
-Homepage: https://github.com/Wahid7852/WasIstLos
+Homepage: https://github.com/Wahid7852/YAWF
 Rules-Requires-Root: no
 
 Package: yawf
