@@ -120,11 +120,21 @@ make install
 > `XDG_DATA_DIRS`, and your package manager never touches `/usr/local`.
 
 
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `src/` | Application sources (`ui/`, `util/`) |
+| `resource/` | GTK `.ui`, icons, desktop entry & AppStream metainfo, logo SVG sources |
+| `po/` | Translations |
+| `packaging/` | `appimage/`, `aur/`, `flatpak/` recipes |
+| `debian/`, `snap/` | Kept at the repo root because `dpkg-buildpackage` and `snapcraft` require them there |
+
 ## Packaging
 
-See [`RELEASING.md`](RELEASING.md) for how a release is cut and shipped to each
-channel. The `debian/` and `snap/` dirs (root, required by their tools) plus `packaging/appimage/`, `packaging/aur/` and `packaging/flatpak/`
-directories hold the per-channel recipes.
+YAWF ships as its own package (`yawf`, app-id `io.github.wahid7852.YAWF`) — it does
+not replace or conflict with the upstream `wasistlos` package. See
+[`RELEASING.md`](RELEASING.md) for how a release is cut and shipped to each channel.
 
 
 ## Roadmap / To-Do
