@@ -20,6 +20,7 @@ parts:
       craftctl default
       sed -i.bak -e 's|Icon=${WIL_ICON}|Icon=usr/local/share/icons/hicolor/256x256/apps/io.github.wahid7852.YAWF.png|g' resource/desktop/io.github.wahid7852.YAWF.desktop.in
     override-build: |
+      export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       unset LD_LIBRARY_PATH
       unset PKG_CONFIG_PATH
       cmake "$SNAPCRAFT_PART_SRC" \
@@ -29,6 +30,7 @@ parts:
       cmake --install . --destdir "$SNAPCRAFT_PART_INSTALL"
     build-packages:
       - intltool
+      - libglib2.0-dev-bin
       - libcanberra-dev
       - libsigc++-2.0-dev
       - libgtkmm-3.0-dev
