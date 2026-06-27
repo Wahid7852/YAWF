@@ -19,8 +19,14 @@ parts:
     override-pull: |
       craftctl default
       sed -i.bak -e 's|Icon=${WIL_ICON}|Icon=usr/local/share/icons/hicolor/256x256/apps/io.github.wahid7852.YAWF.png|g' resource/desktop/io.github.wahid7852.YAWF.desktop.in
-    cmake-parameters:
-      - -DCMAKE_BUILD_TYPE=Release
+    override-build: |
+      unset LD_LIBRARY_PATH
+      unset PKG_CONFIG_PATH
+      cmake "$SNAPCRAFT_PART_SRC" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr/local
+      cmake --build . -- -j$(nproc)
+      cmake --install . --destdir "$SNAPCRAFT_PART_INSTALL"
     build-packages:
       - intltool
       - libcanberra-dev
