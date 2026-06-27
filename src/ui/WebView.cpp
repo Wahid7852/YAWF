@@ -675,7 +675,7 @@ namespace wil::ui
         // accumulates from high-volume group chats. Messages are in IndexedDB so they reload
         // locally — no re-link or server re-fetch needed.
         static constexpr gint64 k_idleThresholdUs = 4LL * 3600LL * G_USEC_PER_SEC;
-        auto const now = g_get_monotonic_time();
+        auto const              now               = g_get_monotonic_time();
         if (m_loadStatus == WEBKIT_LOAD_FINISHED && now - m_lastInteractionTime > k_idleThresholdUs)
         {
             std::cerr << "WebView: idle reload to reclaim JS heap" << std::endl;

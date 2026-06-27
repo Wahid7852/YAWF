@@ -48,10 +48,12 @@ namespace
         {
             char line[128];
             while (std::fgets(line, sizeof(line), f))
-                if (std::sscanf(line, "MemTotal: %lu kB", &memKB) == 1) break;
+                if (std::sscanf(line, "MemTotal: %lu kB", &memKB) == 1)
+                    break;
             std::fclose(f);
         }
-        if (memKB == 0) return 3072U;
+        if (memKB == 0)
+            return 3072U;
         auto const fortyPct = static_cast<guint>(memKB / 1024UL * 2UL / 5UL);
         return std::max(2048U, std::min(4096U, fortyPct));
     }
