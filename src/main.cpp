@@ -51,9 +51,9 @@ namespace
                 if (std::sscanf(line, "MemTotal: %lu kB", &memKB) == 1) break;
             std::fclose(f);
         }
-        if (memKB == 0) return 2048U;
-        auto const quarter = static_cast<guint>(memKB / 1024UL / 4UL);
-        return std::max(1024U, std::min(3072U, quarter));
+        if (memKB == 0) return 3072U;
+        auto const fortyPct = static_cast<guint>(memKB / 1024UL * 2UL / 5UL);
+        return std::max(2048U, std::min(4096U, fortyPct));
     }
 
     // Bound the web process so a long-running WhatsApp Web session releases caches and
