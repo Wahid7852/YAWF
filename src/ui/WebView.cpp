@@ -290,7 +290,7 @@ namespace wil::ui
         g_signal_connect(*this, "web-process-terminated", G_CALLBACK(detail::webProcessTerminated), this);
         g_signal_connect(webContext, "download-started", G_CALLBACK(downloadStarted), nullptr);
         g_signal_connect(webContext, "initialize-notification-permissions", G_CALLBACK(initializeNotificationPermission), nullptr);
-        Glib::signal_timeout().connect(sigc::mem_fun(*this, &WebView::onTimeout), 5000);
+        Glib::signal_timeout().connect(sigc::mem_fun(*this, &WebView::onTimeout), 3000);
 
         if (auto const lang = getSystemLanguage(); lang.has_value())
         {
@@ -305,7 +305,7 @@ namespace wil::ui
         // WebKitGTK's site quirks force a frozen macOS-Safari UA for web.whatsapp.com (overriding ours);
         // disable them so our Chrome-on-Linux UA applies and WhatsApp uses its Chrome path.
         webkit_settings_set_enable_site_specific_quirks(settings, FALSE);
-        webkit_settings_set_enable_developer_extras(settings, TRUE);
+        webkit_settings_set_enable_developer_extras(settings, g_getenv("YAWF_DEVTOOLS") != nullptr);
         auto const hwAccelPolicy = toHwAccelPolicy(util::Settings::getInstance().getValue<int>("web", "hw-accel", WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS));
         webkit_settings_set_hardware_acceleration_policy(settings, hwAccelPolicy);
         webkit_settings_set_minimum_font_size(settings, util::Settings::getInstance().getValue<int>("web", "min-font-size", 0));
