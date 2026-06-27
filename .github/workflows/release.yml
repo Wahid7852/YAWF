@@ -61,21 +61,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CUSTOM_TAG: ${{ env.RELEASE_TAG }}
 
-      - name: Generate Changelog
-        id: generate-changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          onlyLastTag: true
-          unreleased: false
-          stripGeneratorNotice: true
+      - name: Extract Changelog
+        id: changelog
+        run: |
+          body=$(awk '/^## \[?'"$RELEASE_VERSION"'\]?/{found=1; next} found && /^## /{exit} found{print}' CHANGELOG.md | sed '/^[[:space:]]*$/d')
+          printf 'body<<%s\n%s\n%s\n' "EOF" "$body" "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_VERSION }}
-          body: ${{ steps.generate-changelog.outputs.changelog }}
+          body: ${{ steps.changelog.outputs.body }}
           draft: false
           prerelease: false
           files: |
