@@ -48,14 +48,6 @@ jobs:
         id: snapcraft
         uses: snapcore/action-build@v1
 
-      - name: Publish Snap to Snap Store
-        uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
-        with:
-          snap: ${{ steps.snapcraft.outputs.snap }}
-          release: stable
-
       - name: Build AppImage Package
         id: appimage
         uses: AppImageCrafters/build-appimage@fe2205a4d6056be47051f7b1b3811106e9814910
@@ -63,26 +55,6 @@ jobs:
           recipe: "./packaging/appimage/AppImageBuilder.yml"
         env:
           UPDATE_INFO: gh-releases-zsync|Wahid7852|YAWF|${{ env.RELEASE_VERSION }}|*x86_64.AppImage.zsync
-
-      - name: Build and Upload Source Package to PPA
-        env:
-          PPA_GPG_PRIVATE_KEY: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
-          PPA_GPG_KEY_ID: ${{ secrets.PPA_GPG_KEY_ID }}
-          DEBEMAIL: wahidzk0091@gmail.com
-          DEBFULLNAME: Wahid7852
-        run: |
-          sudo apt-get install -y devscripts dput
-
-          echo "$PPA_GPG_PRIVATE_KEY" | base64 --decode | gpg --batch --import
-          echo "$PPA_GPG_KEY_ID:6:" | gpg --batch --import-ownertrust
-
-          # Launchpad requires a valid Ubuntu series name, not "stable"
-          sed -i "1s|($RELEASE_VERSION) stable;|($RELEASE_VERSION~noble1) noble;|" debian/changelog
-
-          # Source-only signed build; -d skips build-dep check on the runner
-          debuild -S -sa -d --no-lintian -k"$PPA_GPG_KEY_ID"
-
-          dput ppa:wahid2584/yawf "../yawf_${RELEASE_VERSION}~noble1_source.changes"
 
       - name: Extract Changelog
         id: changelog

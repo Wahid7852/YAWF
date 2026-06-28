@@ -19,61 +19,32 @@ package metadata derives from it.
 
 ## Per-channel publishing
 
-Both Snap Store and PPA publishing are **automated** by the `Release` workflow
-once the one-time prerequisites below are complete.
+All store publishing is manual. The `Release` workflow only builds artifacts
+and attaches them to the GitHub Release.
 
-### Snap Store (automated after first-time setup)
+### Snap Store
 
-The workflow uses `snapcore/action-publish@v1`.
+```bash
+snapcraft upload --release=stable yawf_*.snap
+```
 
-**One-time setup:**
+Sensitive interfaces (`system-observe`, `process-control`, `browser-support`)
+trigger a manual review on first submission — wait for Store team approval,
+then promote to stable via the dashboard.
 
-1. Register the snap name:
-   ```bash
-   snapcraft register yawf
-   ```
-2. Export CI credentials (scoped to this snap only):
-   ```bash
-   snapcraft export-login \
-     --snaps=yawf \
-     --acls package_access,package_push,package_update,package_release \
-     store-credentials.txt
-   cat store-credentials.txt   # copy the output
-   ```
-3. Add the output as a GitHub repository secret named **`STORE_LOGIN`**
-   (Settings → Secrets and variables → Actions → New repository secret).
+### Launchpad PPA (`ppa:wahid2584/yawf`)
 
-The workflow then publishes every release to the **stable** channel automatically.
+```bash
+# Stamp changelog for the target series and build a signed source package
+VERSION=x.y.z
+sed -i "1s|($VERSION) stable;|($VERSION~noble1) noble;|" debian/changelog
+debuild -S -sa -k C51AF2B42BC70DA7
+dput ppa:wahid2584/yawf ../yawf_${VERSION}~noble1_source.changes
+# Reset changelog afterwards
+git checkout debian/changelog
+```
 
-### Launchpad PPA (automated after first-time setup)
-
-The workflow uses `debuild -S` + `dput` to upload a source package; Launchpad
-builds the binary server-side.
-
-**One-time setup:**
-
-1. Create a Launchpad account and a PPA at
-   `https://launchpad.net/~wahid2584/+archive/ubuntu/yawf`.
-2. Generate a GPG key (skip if you already have one):
-   ```bash
-   gpg --gen-key
-   ```
-3. Publish the key to the Ubuntu keyserver:
-   ```bash
-   gpg --keyserver keyserver.ubuntu.com --send-keys YOUR_KEY_ID
-   ```
-4. Add the key fingerprint to your Launchpad account at
-   `https://launchpad.net/~/+editpgpkeys` and confirm the encrypted email.
-5. Export the private key as base64 for GitHub:
-   ```bash
-   gpg --export-secret-keys --armor YOUR_KEY_ID | base64 -w0
-   ```
-6. Add two GitHub repository secrets:
-   - **`PPA_GPG_PRIVATE_KEY`** — the base64 output from step 5
-   - **`PPA_GPG_KEY_ID`** — your key ID (16-char hex), e.g. `C51AF2B42BC70DA7`
-
-The workflow stamps the changelog with `~noble1` and the `noble` series, builds
-a signed source package, and uploads it to `ppa:wahid7852/yawf`.
+Launchpad builds the binary server-side; the PPA page shows build status.
 
 ### AUR
 
