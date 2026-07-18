@@ -26,5 +26,11 @@ jobs:
         run: |
           for f in $(find src -name "*.js"); do node --check "$f"; done
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
       - name: Build (unpacked, no packaging)
         run: npx electron-builder --dir

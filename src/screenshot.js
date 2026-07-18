@@ -75,4 +75,4 @@ async function captureScreenshot() {
   }
 }
 
-module.exports = { captureScreenshot, detectTool };
+module.exports = { captureScreenshot, detectTool, commandExists };

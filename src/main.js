@@ -218,6 +218,26 @@ function startResourceTooltip() {
   }, 5000);
 }
 
+// Chromium's spellchecker only ships dictionaries for a fixed set of BCP-47
+// codes, and passing one it doesn't recognize to setSpellCheckerLanguages
+// throws rather than degrading gracefully - a real bug seen in a competing
+// Electron WhatsApp client, which crash-loops on region variants like en-IN
+// that aren't in that list. Check availableSpellCheckerLanguages first and
+// only ask for what's actually there, falling back to the bare language
+// (en-IN -> en) and then en-US, instead of trusting the OS locale blindly.
+function applySpellCheckerLanguage(win) {
+  const session = win.webContents.session;
+  const available = session.availableSpellCheckerLanguages || [];
+  const osLocale = app.getLocale();
+  if (available.includes(osLocale)) {
+    session.setSpellCheckerLanguages([osLocale]);
+    return;
+  }
+  const bareLang = osLocale.split('-')[0];
+  const match = available.find((l) => l === bareLang || l.startsWith(`${bareLang}-`));
+  session.setSpellCheckerLanguages([match || 'en-US']);
+}
+
 function createMainWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -238,6 +258,7 @@ function createMainWindow() {
 
   win.webContents.setUserAgent(chromeUserAgent());
   win.webContents.setZoomFactor(settings.get('zoomFactor'));
+  applySpellCheckerLanguage(win);
   win.loadURL(WHATSAPP_URL);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
