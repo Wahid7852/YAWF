@@ -4,6 +4,7 @@ const BOOL_FIELDS = ['ctrlEnterToSend', 'closeToTray', 'startMinimized', 'autost
 const NUMBER_FIELDS = ['idleReloadHours'];
 
 async function init() {
+  window.__yawfApplyI18n();
   const settings = await window.yawf.getSettings();
 
   for (const key of BOOL_FIELDS) {

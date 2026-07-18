@@ -3,6 +3,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('yawf', {
-  openChat: (phone) => ipcRenderer.invoke('phone-dialog:submit', phone),
   getI18n: () => ipcRenderer.invoke('i18n:get-dict'),
 });

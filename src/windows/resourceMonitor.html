@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
-<title>YAWF Resource Monitor</title>
+<title data-i18n="resourceMonitor.title">YAWF Resource Monitor</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #1e1e1e; color: #e8e8e8; }
   h1 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
@@ -16,14 +16,20 @@
 </style>
 </head>
 <body>
-  <h1>Process resource usage</h1>
+  <h1 data-i18n="resourceMonitor.heading">Process resource usage</h1>
   <div class="totals" id="totals">-</div>
   <table>
     <thead>
-      <tr><th>Process</th><th>PID</th><th>CPU%</th><th>RAM (MB)</th></tr>
+      <tr>
+        <th data-i18n="resourceMonitor.colProcess">Process</th>
+        <th data-i18n="resourceMonitor.colPid">PID</th>
+        <th data-i18n="resourceMonitor.colCpu">CPU%</th>
+        <th data-i18n="resourceMonitor.colRam">RAM (MB)</th>
+      </tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
+  <script src="i18n-apply.js"></script>
   <script src="resourceMonitor-renderer.js"></script>
 </body>
 </html>

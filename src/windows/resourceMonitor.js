@@ -5,7 +5,7 @@ const path = require('node:path');
 
 let win = null;
 
-function createResourceMonitor(parent) {
+function createResourceMonitor(parent, i18n) {
   if (win && !win.isDestroyed()) {
     win.focus();
     return win;
@@ -16,7 +16,7 @@ function createResourceMonitor(parent) {
     height: 420,
     resizable: true,
     parent,
-    title: 'YAWF Resource Monitor',
+    title: i18n.t('resourceMonitor.title'),
     webPreferences: {
       preload: path.join(__dirname, 'resourceMonitorPreload.js'),
       contextIsolation: true,

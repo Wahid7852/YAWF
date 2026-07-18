@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
-<title>Open chat by phone number</title>
+<title data-i18n="phoneDialog.title">Open chat by phone number</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #1e1e1e; color: #e8e8e8; }
   p { font-size: 12px; color: #999; margin: 0 0 12px; }
@@ -13,10 +13,11 @@
 </head>
 <body>
   <form id="form">
-    <p>Include the country code, no + or spaces (e.g. 15551234567)</p>
+    <p data-i18n="phoneDialog.hint">Include the country code, no + or spaces (e.g. 15551234567)</p>
     <input type="tel" id="phone" placeholder="15551234567" autofocus />
-    <button type="submit">Open chat</button>
+    <button type="submit" data-i18n="phoneDialog.button">Open chat</button>
   </form>
+  <script src="i18n-apply.js"></script>
   <script src="phoneDialog-renderer.js"></script>
 </body>
 </html>

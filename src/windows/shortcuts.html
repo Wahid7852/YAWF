@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
-<title>YAWF Shortcuts</title>
+<title data-i18n="shortcuts.title">YAWF Shortcuts</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #1e1e1e; color: #e8e8e8; }
   h1 { font-size: 15px; font-weight: 600; margin: 0 0 14px; }
@@ -14,32 +14,35 @@
 </style>
 </head>
 <body>
-  <h1>Keyboard shortcuts</h1>
+  <h1 data-i18n="shortcuts.heading">Keyboard shortcuts</h1>
 
-  <h2>Formatting</h2>
+  <h2 data-i18n="shortcuts.sectionFormatting">Formatting</h2>
   <table>
-    <tr><td>Ctrl+B</td><td>Wrap selection in *bold*</td></tr>
-    <tr><td>Ctrl+I</td><td>Wrap selection in _italic_</td></tr>
-    <tr><td>Ctrl+Shift+X</td><td>Wrap selection in ~strikethrough~</td></tr>
-    <tr><td>Ctrl+Shift+M</td><td>Wrap selection in &#96;&#96;&#96;monospace&#96;&#96;&#96;</td></tr>
-    <tr><td>Ctrl+Shift+N</td><td>Clear formatting from selection</td></tr>
+    <tr><td>Ctrl+B</td><td data-i18n="shortcuts.bold">Wrap selection in *bold*</td></tr>
+    <tr><td>Ctrl+I</td><td data-i18n="shortcuts.italic">Wrap selection in _italic_</td></tr>
+    <tr><td>Ctrl+Shift+X</td><td data-i18n="shortcuts.strikethrough">Wrap selection in ~strikethrough~</td></tr>
+    <tr><td>Ctrl+Shift+M</td><td data-i18n="shortcuts.monospace">Wrap selection in ```monospace```</td></tr>
+    <tr><td>Ctrl+Shift+N</td><td data-i18n="shortcuts.clearFormatting">Clear formatting from selection</td></tr>
   </table>
 
-  <h2>Images</h2>
+  <h2 data-i18n="shortcuts.sectionImages">Images</h2>
   <table>
-    <tr><td>Ctrl+Shift+V</td><td>Force an image-only paste from the clipboard</td></tr>
-    <tr><td>Ctrl+Shift+S</td><td>Capture a screen region into the composer</td></tr>
+    <tr><td>Ctrl+Shift+V</td><td data-i18n="shortcuts.pasteImage">Force an image-only paste from the clipboard</td></tr>
+    <tr><td>Ctrl+Shift+S</td><td data-i18n="shortcuts.screenshot">Capture a screen region into the composer</td></tr>
   </table>
 
-  <h2>Window</h2>
+  <h2 data-i18n="shortcuts.sectionWindow">Window</h2>
   <table>
-    <tr><td>Ctrl+=</td><td>Zoom in</td></tr>
-    <tr><td>Ctrl+-</td><td>Zoom out</td></tr>
-    <tr><td>Ctrl+0</td><td>Reset zoom</td></tr>
-    <tr><td>F11</td><td>Toggle fullscreen</td></tr>
-    <tr><td>Ctrl+Shift+P</td><td>Open a chat by phone number</td></tr>
-    <tr><td>Ctrl+Shift+R</td><td>Resource monitor (live CPU/RAM per process)</td></tr>
-    <tr><td>Ctrl+/</td><td>This window</td></tr>
+    <tr><td>Ctrl+=</td><td data-i18n="shortcuts.zoomIn">Zoom in</td></tr>
+    <tr><td>Ctrl+-</td><td data-i18n="shortcuts.zoomOut">Zoom out</td></tr>
+    <tr><td>Ctrl+0</td><td data-i18n="shortcuts.zoomReset">Reset zoom</td></tr>
+    <tr><td>F11</td><td data-i18n="shortcuts.fullscreen">Toggle fullscreen</td></tr>
+    <tr><td>Ctrl+Shift+P</td><td data-i18n="shortcuts.phoneDialog">Open a chat by phone number</td></tr>
+    <tr><td>Ctrl+Shift+R</td><td data-i18n="shortcuts.resourceMonitor">Resource monitor (live CPU/RAM per process)</td></tr>
+    <tr><td>Ctrl+/</td><td data-i18n="shortcuts.thisWindow">This window</td></tr>
   </table>
+
+  <script src="i18n-apply.js"></script>
+  <script src="shortcuts-renderer.js"></script>
 </body>
 </html>

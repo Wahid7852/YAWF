@@ -26,6 +26,7 @@ multiple accounts at once.
 - Open a chat directly by phone number, in-app dialog or `whatsapp:` deep link
 - CLI remote control: `yawf --show / --hide / --refresh / --quit`
 - Custom CSS at `~/.config/yawf/user.css`
+- UI in 16 languages (matches the OS locale automatically), see `src/locales/`
 
 **Reliability**
 - Auto-recovery: reloads itself on renderer crashes and on WhatsApp Web's own
@@ -96,7 +97,13 @@ difference between "should be fine" and "checked."
 
 And it's exercised against a real account before it ships, not just read
 over. The first packaged build had a fatal GPU crash and silently broken tray
-icons, both caught by actually running the thing and watching it fail.
+icons, both caught by actually running the thing and watching it fail. A
+`TypeError: Object has been destroyed` crash on every single window close
+(reading `webContents.id` after Electron had already torn the window down)
+made it through an entire review pass too, because every test up to that
+point only opened windows, never closed one. It shipped, someone hit it
+within a day, and it got fixed the same way: by actually closing a window and
+watching what happened, not by staring at the diff harder.
 
 ## Known gaps
 
@@ -105,7 +112,8 @@ icons, both caught by actually running the thing and watching it fail.
   and notifications work regardless
 - `.rpm` build is untested locally (no `rpmbuild` available in dev), uses the
   same pipeline as the verified `.deb`/`.pacman` builds
-- Locale support (the old app had 18) hasn't been ported yet
+- Translations (16 languages, see `src/locales/`) are AI-translated and
+  haven't had a native-speaker review pass yet
 - Flatpak and Launchpad PPA distribution are manual/unpublished for now
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the fuller list of what's been

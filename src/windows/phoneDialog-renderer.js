@@ -1,5 +1,7 @@
 'use strict';
 
+window.__yawfApplyI18n();
+
 document.getElementById('form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const phone = document.getElementById('phone').value.replace(/[^\d+]/g, '');

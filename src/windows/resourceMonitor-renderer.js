@@ -2,6 +2,11 @@
 
 const rowsEl = document.getElementById('rows');
 const totalsEl = document.getElementById('totals');
+let dict = {};
+
+function interpolate(str, vars) {
+  return Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), str);
+}
 
 function render(metrics) {
   let totalMb = 0;
@@ -20,7 +25,11 @@ function render(metrics) {
     rowsEl.appendChild(tr);
   }
 
-  totalsEl.textContent = `${metrics.length} processes - ${totalMb} MB total - ${totalCpu.toFixed(1)}% CPU total`;
+  totalsEl.textContent = interpolate(dict['resourceMonitor.totals'] || '{count} processes, {mb} MB total, {cpu}% CPU total', {
+    count: metrics.length,
+    mb: totalMb,
+    cpu: totalCpu.toFixed(1),
+  });
 }
 
 async function tick() {
@@ -28,6 +37,11 @@ async function tick() {
   render(metrics);
 }
 
-tick();
-const interval = setInterval(tick, 2000);
-window.addEventListener('beforeunload', () => clearInterval(interval));
+async function init() {
+  dict = await window.__yawfApplyI18n();
+  tick();
+  const interval = setInterval(tick, 2000);
+  window.addEventListener('beforeunload', () => clearInterval(interval));
+}
+
+init();

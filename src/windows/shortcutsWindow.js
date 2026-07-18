@@ -5,7 +5,7 @@ const path = require('node:path');
 
 let win = null;
 
-function createShortcutsWindow(parent) {
+function createShortcutsWindow(parent, i18n) {
   if (win && !win.isDestroyed()) {
     win.focus();
     return win;
@@ -16,8 +16,12 @@ function createShortcutsWindow(parent) {
     height: 520,
     resizable: false,
     parent,
-    title: 'YAWF Shortcuts',
-    webPreferences: { sandbox: true },
+    title: i18n.t('shortcuts.title'),
+    webPreferences: {
+      preload: path.join(__dirname, 'shortcutsPreload.js'),
+      contextIsolation: true,
+      sandbox: true,
+    },
   });
 
   win.setMenuBarVisibility(false);

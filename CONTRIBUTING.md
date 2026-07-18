@@ -25,31 +25,43 @@ machine, not just read over: QR login, session persistence across restart,
 chat list and message rendering, tray menu, `--quit`/`--show`/`--hide`/
 `--refresh` remote commands, `.deb`/`.AppImage`/`.pacman` builds (installed
 and inspected with `dpkg-deb --info` / `pacman -Qi`), zoom persisting across
-restart, the phone dialog and shortcuts window actually opening (driven over
-the Chrome DevTools Protocol since no `xdotool`/`ydotool` was available,
-dispatched real keyboard events through the real preload pipeline and
-confirmed the resulting windows existed with the right content), the
-resource monitor populating live data, `--profile` isolation with two
-accounts running simultaneously against separate session directories,
-notification permission grants, and that the sender-verification IPC
-hardening doesn't block the legitimate windows from calling their own
-handlers.
+restart, the phone dialog and shortcuts window actually opening and closing
+(driven over the Chrome DevTools Protocol since no `xdotool`/`ydotool` was
+available - dispatched real keyboard events through the real preload
+pipeline, confirmed the resulting windows existed with the right content,
+and confirmed `dispatchEvent()`'s return value to prove `preventDefault()`
+actually ran rather than just assuming the dispatch landed), `F11`
+fullscreen (screenshot-confirmed, full monitor takeover), the resource
+monitor populating live data, `--profile` isolation with two accounts
+running simultaneously against separate session directories, notification
+permission grants, i18n end to end (forced `--lang=de`, confirmed window
+titles and body text actually render translated, not just that the JSON
+loads), screenshot-to-chat up to the point a real mouse is required (the
+region-capture tool is correctly detected, the keyboard shortcut correctly
+launches `slurp`, and cancelling that selection is handled without a crash -
+the actual drag-a-region step can't be automated here), and that the
+sender-verification IPC hardening doesn't block the legitimate windows from
+calling their own handlers.
 
-Two real bugs were caught this way rather than by reading the code: the
-packaged AppImage was fatally crashing a few seconds into every session from
-a Vulkan/Wayland GPU-process incompatibility (fixed by disabling the Vulkan
-feature path), and `build/icons/` had never actually been bundled into
-packaged builds, so the tray/window/dialog icons were silently broken in
-every install despite `npm start` looking fine.
+Bugs caught this way rather than by reading the code: the packaged AppImage
+was fatally crashing a few seconds into every session from a Vulkan/Wayland
+GPU-process incompatibility (fixed by disabling the Vulkan feature path);
+`build/icons/` had never actually been bundled into packaged builds, so the
+tray/window/dialog icons were silently broken in every install despite
+`npm start` looking fine; and a `TypeError: Object has been destroyed`
+crashed the main process on *every single window close* (`win.webContents.id`
+was read inside the `closed` handler, after Electron had already torn the
+window down) - this one shipped and a user hit it before it got caught,
+because every close-path test up to that point only ever opened windows.
+Fixed by capturing the id before registering the handler.
 
-Not yet exercised: `F11` fullscreen (same simple IPC path as zoom and the
-phone dialog, both verified, so high confidence, just not visually
-confirmed), screenshot-to-chat with a real region selection, idle-reload
-firing after a real 4h+ idle period, a real WhatsApp call end to end (needs a
-second account), `.rpm` (no `rpmbuild` in the dev environment used to build
-this), `.snap` (needs the CI-only `snapcore/action-build` wrapper). The
-release CI workflow itself has been written and reasoned through but never
-actually run, only a push to the `release` branch proves it.
+Not yet exercised: idle-reload firing after a real 4h+ idle period, a real
+WhatsApp call end to end (needs a second account), `.rpm` (no `rpmbuild` in
+the dev environment used to build this), `.snap` (needs the CI-only
+`snapcore/action-build` wrapper). The release CI workflow itself has been
+written and reasoned through but never actually run, only a push to the
+`release` branch proves it. The 16 translation files are AI-generated and
+haven't had a native-speaker accuracy review.
 
 Tray icon registration (`StatusNotifierItem` over DBus) was confirmed absent
 on one Wayland/Hyprland setup, and confirmed to be an environment-level

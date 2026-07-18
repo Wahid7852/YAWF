@@ -22,6 +22,7 @@ function loadIcon(iconDir, attention) {
 
 function createTray({
   iconDir,
+  t,
   onToggleWindow,
   onRefresh,
   onPreferences,
@@ -39,21 +40,21 @@ function createTray({
 
   function rebuildMenu() {
     const menu = Menu.buildFromTemplate([
-      { label: isWindowVisible() ? 'Hide' : 'Show', click: onToggleWindow },
-      { label: 'Refresh', click: onRefresh },
-      { label: 'Open chat by phone number…', click: onOpenPhoneDialog },
-      { label: 'Preferences…', click: onPreferences },
-      { label: 'Keyboard shortcuts', click: onShortcuts },
-      { label: 'Resource monitor…', click: onResourceMonitor },
+      { label: isWindowVisible() ? t('tray.hide') : t('tray.show'), click: onToggleWindow },
+      { label: t('tray.refresh'), click: onRefresh },
+      { label: t('tray.openPhoneDialog'), click: onOpenPhoneDialog },
+      { label: t('tray.preferences'), click: onPreferences },
+      { label: t('tray.shortcuts'), click: onShortcuts },
+      { label: t('tray.resourceMonitor'), click: onResourceMonitor },
       { type: 'separator' },
-      { label: 'Quit', click: onQuit },
+      { label: t('tray.quit'), click: onQuit },
     ]);
     tray.setContextMenu(menu);
   }
 
   function updateTooltip() {
     const parts = ['YAWF'];
-    if (unread > 0) parts.push(`${unread} unread`);
+    if (unread > 0) parts.push(t('tray.unread', { count: unread }));
     if (resourceSummary) parts.push(resourceSummary);
     tray.setToolTip(parts.join(' - '));
   }

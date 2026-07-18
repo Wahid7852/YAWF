@@ -5,7 +5,7 @@ const path = require('node:path');
 
 let win = null;
 
-function createPreferencesWindow(parent) {
+function createPreferencesWindow(parent, i18n) {
   if (win && !win.isDestroyed()) {
     win.focus();
     return win;
@@ -16,7 +16,7 @@ function createPreferencesWindow(parent) {
     height: 420,
     resizable: false,
     parent,
-    title: 'YAWF Preferences',
+    title: i18n.t('prefs.title'),
     webPreferences: {
       preload: path.join(__dirname, 'preferencesPreload.js'),
       contextIsolation: true,

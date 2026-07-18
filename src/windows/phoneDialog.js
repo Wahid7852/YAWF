@@ -5,7 +5,7 @@ const path = require('node:path');
 
 let win = null;
 
-function createPhoneDialog(parent) {
+function createPhoneDialog(parent, i18n) {
   if (win && !win.isDestroyed()) {
     win.focus();
     return win;
@@ -17,7 +17,7 @@ function createPhoneDialog(parent) {
     resizable: false,
     parent,
     modal: true,
-    title: 'Open chat by phone number',
+    title: i18n.t('phoneDialog.title'),
     webPreferences: {
       preload: path.join(__dirname, 'phoneDialogPreload.js'),
       contextIsolation: true,

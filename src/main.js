@@ -13,6 +13,7 @@ const { createPhoneDialog } = require('./windows/phoneDialog');
 const { createShortcutsWindow } = require('./windows/shortcutsWindow');
 const { createResourceMonitor } = require('./windows/resourceMonitor');
 const { captureScreenshot } = require('./screenshot');
+const { createI18n } = require('./i18n');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com';
 const ICON_DIR = path.join(__dirname, '..', 'build', 'icons');
@@ -68,8 +69,13 @@ app.commandLine.appendSwitch('disable-breakpad');
 // silently granting IPC access to untrusted content.
 const trustedWebContentsIds = new Set();
 function trustWindow(win) {
-  trustedWebContentsIds.add(win.webContents.id);
-  win.on('closed', () => trustedWebContentsIds.delete(win.webContents.id));
+  // Capture the id before it's used in the 'closed' handler - by the time that
+  // event fires, win.webContents is already destroyed, so reading .id from it
+  // then throws "Object has been destroyed" (this crashed every window close
+  // with an uncaught-exception dialog until caught by an actual close test).
+  const id = win.webContents.id;
+  trustedWebContentsIds.add(id);
+  win.on('closed', () => trustedWebContentsIds.delete(id));
   return win;
 }
 function handleTrusted(channel, fn) {
@@ -94,6 +100,7 @@ function onTrusted(channel, fn) {
 let mainWindow = null;
 let tray = null;
 let settings = null;
+let i18n = null;
 let quitting = false;
 let reloadTimer = null;
 let reloadBackoffMs = 2000;
@@ -280,19 +287,20 @@ function broadcastSettings() {
 }
 
 function openPreferencesWindow() {
-  return trustWindow(createPreferencesWindow(mainWindow));
+  return trustWindow(createPreferencesWindow(mainWindow, i18n));
 }
 function openPhoneDialog() {
-  return trustWindow(createPhoneDialog(mainWindow));
+  return trustWindow(createPhoneDialog(mainWindow, i18n));
 }
 function openShortcutsWindow() {
-  return trustWindow(createShortcutsWindow(mainWindow));
+  return trustWindow(createShortcutsWindow(mainWindow, i18n));
 }
 function openResourceMonitor() {
-  return trustWindow(createResourceMonitor(mainWindow));
+  return trustWindow(createResourceMonitor(mainWindow, i18n));
 }
 
 function registerIpc() {
+  handleTrusted('i18n:get-dict', () => i18n.dict);
   handleTrusted('settings:get-all', () => settings.getAll());
   handleTrusted('settings:set', (_e, key, value) => {
     settings.set(key, value);
@@ -352,6 +360,7 @@ app.on('open-url', (e, url) => {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   settings = new Settings(app.getPath('userData'));
+  i18n = createI18n(app.getLocale());
   app.setAsDefaultProtocolClient('whatsapp');
   registerIpc();
 
@@ -365,6 +374,7 @@ app.whenReady().then(() => {
   try {
     tray = createTray({
       iconDir: ICON_DIR,
+      t: i18n.t,
       onToggleWindow: toggleWindow,
       onRefresh: () => mainWindow?.loadURL(WHATSAPP_URL),
       onPreferences: openPreferencesWindow,

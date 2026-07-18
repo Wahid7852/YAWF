@@ -19,6 +19,9 @@ for what's been tested against a real account so far.
 * Custom CSS support (`~/.config/yawf/user.css`)
 * Built-in resource monitor (`Ctrl+Shift+R`), live CPU/RAM per process
 * `.rpm` and `.pacman` packages, in addition to `.deb` and `.AppImage`
+* UI translated into 16 languages, matching the OS locale automatically
+  (the same set the old app shipped, minus none - see "Removed" in the
+  previous draft of this entry, which undersold it as 18 and not-yet-ported)
 
 ### Changed
 * Spellcheck now uses Chromium's built-in spellchecker instead of an optional
@@ -26,8 +29,16 @@ for what's been tested against a real account so far.
 * Memory management: V8 heap capped at 40% of physical RAM (same ratio as the
   old WebKit memory-pressure tuning), idle heap reset carried over unchanged
 
+### Fixed
+* A `TypeError: Object has been destroyed` crashed the main process on every
+  window close (reading `webContents.id` inside the `closed` handler, after
+  Electron had already torn the window down)
+* Packaged builds fatally crashed a few seconds into every session from a
+  Vulkan/Wayland GPU-process incompatibility
+* `build/icons/` was never bundled into packaged builds, so tray/window/dialog
+  icons were silently broken outside the dev (`npm start`) environment
+
 ### Removed
-* The 18 bundled locales aren't ported yet, English only for now
 * Snap, Flatpak, and Launchpad PPA distribution are unpublished until rebuilt
   for the new packaging pipeline
 
