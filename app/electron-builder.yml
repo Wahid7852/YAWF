@@ -1,0 +1,80 @@
+appId: io.github.wahid7852.YAWF
+productName: YAWF
+copyright: Copyright © Wahid7852
+
+# The C++ app (src/) and this Electron rewrite coexist in the same repo/release
+# during the transition period (see app/README.md) - both build a "yawf" deb/
+# AppImage/etc from the same version number, so artifact names must not collide
+# when both get attached to one GitHub Release.
+artifactName: "${name}-electron-${version}-${arch}.${ext}"
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - src/**/*
+  - build/icons/**/*
+  - package.json
+  - "!**/*.map"
+
+linux:
+  icon: build/icons
+  category: Network
+  synopsis: An unofficial WhatsApp desktop application for Linux
+  description: >-
+    Wraps WhatsApp Web with crash auto-recovery, idle heap reset, multi-profile
+    support, clipboard image paste, screenshot-to-chat, and markdown shortcuts.
+  mimeTypes:
+    - x-scheme-handler/whatsapp
+  executableName: yawf
+  target:
+    - target: deb
+      arch: [x64, arm64]
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: snap
+      arch: [x64, arm64]
+    - target: rpm
+      arch: [x64]
+    - target: pacman
+      arch: [x64, arm64]
+
+deb:
+  depends:
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - libatspi2.0-0
+    - libsecret-1-0
+    - xdg-utils
+
+rpm:
+  depends:
+    - libnotify
+    - nss
+    - libXScrnSaver
+    - libXtst
+    - at-spi2-core
+    - libsecret
+    - xdg-utils
+
+snap:
+  confinement: strict
+  grade: stable
+  plugs:
+    - default
+    - desktop
+    - desktop-legacy
+    - wayland
+    - x11
+    - unity7
+    - network
+    - browser-support
+    - camera
+    - audio-playback
+    - audio-record
+    - password-manager-service
+
+publish: null

@@ -31,6 +31,12 @@
 # Common build directory
 build/
 
+# app/build/icons is checked-in source assets for electron-builder, not a
+# generated build directory, unlike the CMake build/ this pattern targets
+!app/build/
+!app/build/icons/
+!app/build/icons/**
+
 # IDE folders
 .idea/
 .vscode/

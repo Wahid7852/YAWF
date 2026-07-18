@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=YAWF
+GenericName=Unofficial WhatsApp client
+Comment=An unofficial WhatsApp desktop application for Linux (Electron)
+Exec=yawf %u
+Icon=io.github.wahid7852.YAWF
+Terminal=false
+MimeType=x-scheme-handler/whatsapp;
+StartupWMClass=YAWF
+Categories=Network;GTK;GNOME;
+Keywords=chat;im;messaging;messenger;sms;whatsapp;whatsapp-desktop;yawf;

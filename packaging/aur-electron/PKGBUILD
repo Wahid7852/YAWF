@@ -1,0 +1,39 @@
+# Maintainer: Wahid7852 <wahidzk0091@gmail.com>
+#
+# Electron rewrite of YAWF (app/ in the repo), packaged separately from the
+# native C++ build's yawf PKGBUILD in packaging/aur/. Both coexist until a
+# deliberate decision is made to retire one - see app/README.md. Repackages
+# the AppImage released by .github/workflows/release.yml's release-electron
+# job, following the standard AUR -bin AppImage-repackaging convention since
+# electron-builder's own .pacman artifact isn't suited to AUR distribution
+# (it isn't source-buildable and bundles its own copy of Electron already).
+pkgname=yawf-electron-bin
+pkgver=3.0.0
+pkgrel=1
+pkgdesc="An unofficial WhatsApp desktop client for Linux (YAWF - Electron edition)"
+arch=('x86_64')
+url="https://github.com/Wahid7852/YAWF"
+license=('GPL3')
+depends=('gtk3' 'nss' 'libxss' 'libxtst' 'at-spi2-core' 'libsecret' 'xdg-utils')
+provides=('yawf')
+conflicts=('yawf' 'yawf-electron')
+source=("$pkgname-$pkgver.AppImage::https://github.com/Wahid7852/YAWF/releases/download/v$pkgver/yawf-electron-$pkgver-x86_64.AppImage"
+        "yawf.desktop"
+        "yawf.png")
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP')
+noextract=("$pkgname-$pkgver.AppImage")
+
+package() {
+    install -Dm755 "$pkgname-$pkgver.AppImage" "$pkgdir/opt/$pkgname/yawf.AppImage"
+    install -Dm644 "yawf.desktop" "$pkgdir/usr/share/applications/io.github.wahid7852.YAWF.desktop"
+    install -Dm644 "yawf.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/io.github.wahid7852.YAWF.png"
+
+    install -d "$pkgdir/usr/bin"
+    cat > "$pkgdir/usr/bin/yawf" << 'EOF'
+#!/bin/sh
+exec /opt/yawf-electron-bin/yawf.AppImage "$@"
+EOF
+    chmod 755 "$pkgdir/usr/bin/yawf"
+}

@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
+      tag: ${{ steps.set-version.outputs.tag }}
 
     steps:
       - name: Checkout
@@ -29,10 +32,13 @@ jobs:
           make install DESTDIR=../../AppDir
 
       - name: Set Version
+        id: set-version
         run: |
           version=$(cat "build/release/src/VERSION")
           echo "RELEASE_VERSION=${version}" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=v${version}" >> "$GITHUB_ENV"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
           sed -i -E "s/\((.*?)\)/(${version})/g" debian/changelog
 
       - name: Build Debian Package
@@ -74,3 +80,49 @@ jobs:
             yawf_${{ env.RELEASE_VERSION }}_amd64.deb
             ${{ steps.snapcraft.outputs.snap }}
             yawf-${{ env.RELEASE_VERSION }}-x86_64.AppImage
+
+  # Builds the Electron rewrite (app/) alongside the C++ app above and attaches
+  # its artifacts to the same release. Both apps coexist until a deliberate
+  # cutover decision is made - see app/README.md. deb/AppImage/pacman all use
+  # electron-builder's fpm-based pipeline, verified locally against this repo
+  # (built + dpkg-deb/pacman -Qi inspected) before this job was written. snap
+  # is deliberately left out: the C++ job above needs the dedicated
+  # snapcore/action-build action to build reliably in CI, and electron-builder's
+  # own snap target (raw snapcraft) hasn't been verified to work the same way
+  # here - do that as a follow-up rather than ship an untested CI step.
+  release-electron:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Sync version with release
+        working-directory: app
+        run: npm version --no-git-tag-version --allow-same-version ${{ needs.release.outputs.version }}
+
+      - name: Build Electron packages
+        working-directory: app
+        run: npx electron-builder --linux deb AppImage rpm pacman --publish never
+
+      - name: Upload Electron artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release.outputs.tag }}
+          files: |
+            app/dist/*.deb
+            app/dist/*.AppImage
+            app/dist/*.rpm
+            app/dist/*.pacman

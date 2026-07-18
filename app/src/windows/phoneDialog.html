@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+<title>Open chat by phone number</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #1e1e1e; color: #e8e8e8; }
+  p { font-size: 12px; color: #999; margin: 0 0 12px; }
+  input { width: 100%; box-sizing: border-box; background: #2a2a2a; color: #e8e8e8; border: 1px solid #444; border-radius: 4px; padding: 8px; font-size: 14px; }
+  button { margin-top: 14px; width: 100%; padding: 8px; border-radius: 4px; border: none; background: #25d366; color: #06210f; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <form id="form">
+    <p>Include the country code, no + or spaces (e.g. 15551234567)</p>
+    <input type="tel" id="phone" placeholder="15551234567" autofocus />
+    <button type="submit">Open chat</button>
+  </form>
+  <script src="phoneDialog-renderer.js"></script>
+</body>
+</html>
