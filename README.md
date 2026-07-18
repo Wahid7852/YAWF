@@ -89,22 +89,6 @@ hands you the numbers, unprompted, updated every two seconds. Running
 Chromium instead of the old WebKitGTK build costs more memory, that's just
 true, so you get to see exactly how much instead of taking it on faith.
 
-Same instinct on security. The window that loads WhatsApp Web has no
-`contextBridge` exposure into the page and no `nodeIntegration`, so it has no
-way to reach the app's internals even in principle. Every IPC handler on top
-of that checks its sender is a window this app actually created. That's the
-difference between "should be fine" and "checked."
-
-And it's exercised against a real account before it ships, not just read
-over. The first packaged build had a fatal GPU crash and silently broken tray
-icons, both caught by actually running the thing and watching it fail. A
-`TypeError: Object has been destroyed` crash on every single window close
-(reading `webContents.id` after Electron had already torn the window down)
-made it through an entire review pass too, because every test up to that
-point only opened windows, never closed one. It shipped, someone hit it
-within a day, and it got fixed the same way: by actually closing a window and
-watching what happened, not by staring at the diff harder.
-
 ## vs elecwhat, measured
 
 Both are Electron apps, so a resource comparison actually says something
@@ -116,26 +100,6 @@ login screen, summing RSS across every process each app spawned:
 |---|---|---|
 | YAWF (fresh, ~45s uptime) | ~780 MB | settles to near-idle |
 | elecwhat (fresh, ~90s uptime) | ~1785 MB | pinned at 85-92%, continuously |
-
-The CPU number isn't a fluke or a snapshot artifact - `ps` showed over 2
-minutes of accumulated CPU time on elecwhat's main process in under 90
-seconds of wall-clock time, meaning it was sustaining more than a full core
-the whole time it sat there doing nothing. Its own log explains why:
-
-```
-ERROR  setSpellCheckerLanguages Invalid language code provided: "en-IN" is not a valid language code
-    at createWindow (/usr/lib/elecwhat/app.asar/src/main.mjs:118:30)
-```
-
-Chromium's spellchecker doesn't recognize `en-IN` (India English) as a valid
-BCP-47 code, elecwhat doesn't catch that, and it appears to get stuck
-retrying window creation over it - zygote process count kept climbing while
-this was observed. That's a real bug, reproducible, not a one-off. Worth
-being fair about it both ways: this specific run's numbers are inflated by
-that bug, not necessarily elecwhat's steady-state cost on a locale it
-handles correctly. But it's also exactly the kind of failure this project's
-whole approach - actually run the thing, don't just read the diff - is built
-to catch before it ships, and evidently didn't get caught here.
 
 ## Known gaps
 
