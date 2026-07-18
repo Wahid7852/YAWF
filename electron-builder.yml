@@ -2,12 +2,6 @@ appId: io.github.wahid7852.YAWF
 productName: YAWF
 copyright: Copyright © Wahid7852
 
-# The C++ app (src/) and this Electron rewrite coexist in the same repo/release
-# during the transition period (see app/README.md) - both build a "yawf" deb/
-# AppImage/etc from the same version number, so artifact names must not collide
-# when both get attached to one GitHub Release.
-artifactName: "${name}-electron-${version}-${arch}.${ext}"
-
 directories:
   output: dist
   buildResources: build
@@ -28,17 +22,20 @@ linux:
   mimeTypes:
     - x-scheme-handler/whatsapp
   executableName: yawf
+  # arm64 isn't listed: nothing here has been built or tested for it, and the
+  # CI runner is x64-only with no cross-build step, so declaring arm64 targets
+  # would just be an unverified claim in the config.
   target:
     - target: deb
-      arch: [x64, arm64]
+      arch: [x64]
     - target: AppImage
-      arch: [x64, arm64]
+      arch: [x64]
     - target: snap
-      arch: [x64, arm64]
+      arch: [x64]
     - target: rpm
       arch: [x64]
     - target: pacman
-      arch: [x64, arm64]
+      arch: [x64]
 
 deb:
   depends:

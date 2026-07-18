@@ -9,9 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      version: ${{ steps.set-version.outputs.version }}
-      tag: ${{ steps.set-version.outputs.tag }}
 
     steps:
       - name: Checkout
@@ -19,48 +16,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt -y install build-essential intltool cmake pkg-config libgtkmm-3.0-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev libcanberra-dev debhelper zsync squashfs-tools
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      - name: Build & Install
-        run: |
-          mkdir -p build/release && cd build/release
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr ../..
-          make -j4
-          make install DESTDIR=../../AppDir
+      - name: Install dependencies
+        run: npm ci
 
       - name: Set Version
         id: set-version
         run: |
-          version=$(cat "build/release/src/VERSION")
+          version=$(node -p "require('./package.json').version")
           echo "RELEASE_VERSION=${version}" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=v${version}" >> "$GITHUB_ENV"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
-          sed -i -E "s/\((.*?)\)/(${version})/g" debian/changelog
 
-      - name: Build Debian Package
-        id: dpkg-buildpackage
-        uses: jtdor/build-deb-action@v1
-        env:
-          DEB_BUILD_OPTIONS: noautodbgsym
-        with:
-          artifacts-dir: "."
-          buildpackage-opts: -uc -us -ui
-
-      - name: Build Snap Package
-        id: snapcraft
-        uses: snapcore/action-build@v1
-
-      - name: Build AppImage Package
-        id: appimage
-        uses: AppImageCrafters/build-appimage@fe2205a4d6056be47051f7b1b3811106e9814910
-        with:
-          recipe: "./packaging/appimage/AppImageBuilder.yml"
-        env:
-          UPDATE_INFO: gh-releases-zsync|Wahid7852|YAWF|${{ env.RELEASE_VERSION }}|*x86_64.AppImage.zsync
+      # deb/AppImage/rpm/pacman all use electron-builder's fpm-based pipeline,
+      # verified locally against this repo before this job was written (built,
+      # then dpkg-deb --info / pacman -U / AppImage launch all inspected). snap
+      # is deliberately left out: it needs the dedicated snapcore/action-build
+      # action to build reliably in CI (the old C++ job used exactly that), and
+      # electron-builder's own snap target (raw snapcraft) hasn't been verified
+      # here - do that as a follow-up rather than ship an untested CI step.
+      - name: Build Linux packages
+        run: npx electron-builder --linux deb AppImage rpm pacman --publish never
 
       - name: Extract Changelog
         id: changelog
@@ -77,52 +56,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            yawf_${{ env.RELEASE_VERSION }}_amd64.deb
-            ${{ steps.snapcraft.outputs.snap }}
-            yawf-${{ env.RELEASE_VERSION }}-x86_64.AppImage
-
-  # Builds the Electron rewrite (app/) alongside the C++ app above and attaches
-  # its artifacts to the same release. Both apps coexist until a deliberate
-  # cutover decision is made - see app/README.md. deb/AppImage/pacman all use
-  # electron-builder's fpm-based pipeline, verified locally against this repo
-  # (built + dpkg-deb/pacman -Qi inspected) before this job was written. snap
-  # is deliberately left out: the C++ job above needs the dedicated
-  # snapcore/action-build action to build reliably in CI, and electron-builder's
-  # own snap target (raw snapcraft) hasn't been verified to work the same way
-  # here - do that as a follow-up rather than ship an untested CI step.
-  release-electron:
-    needs: release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        working-directory: app
-        run: npm ci
-
-      - name: Sync version with release
-        working-directory: app
-        run: npm version --no-git-tag-version --allow-same-version ${{ needs.release.outputs.version }}
-
-      - name: Build Electron packages
-        working-directory: app
-        run: npx electron-builder --linux deb AppImage rpm pacman --publish never
-
-      - name: Upload Electron artifacts to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.release.outputs.tag }}
-          files: |
-            app/dist/*.deb
-            app/dist/*.AppImage
-            app/dist/*.rpm
-            app/dist/*.pacman
+            dist/*.deb
+            dist/*.AppImage
+            dist/*.rpm
+            dist/*.pacman

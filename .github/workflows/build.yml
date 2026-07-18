@@ -12,26 +12,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt -y install build-essential intltool libgtkmm-3.0-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev libcanberra-dev
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      - name: Configure
-        run: |
-          mkdir -p build/debug
-          mkdir -p build/release
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Debug Build
+      - name: Syntax check
         run: |
-          cd build/debug
-          cmake -DCMAKE_BUILD_TYPE=Debug ../..
-          make -j4
+          for f in $(find src -name "*.js"); do node --check "$f"; done
 
-      - name: Release Build
-        run: |
-          cd build/release
-          cmake -DCMAKE_BUILD_TYPE=Release ../..
-          make -j4
+      - name: Build (unpacked, no packaging)
+        run: npx electron-builder --dir

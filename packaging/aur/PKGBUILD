@@ -1,28 +1,30 @@
 # Maintainer: Wahid7852 <wahidzk0091@gmail.com>
-pkgname=yawf
-pkgver=2.1.0
+pkgname=yawf-bin
+pkgver=3.0.0
 pkgrel=1
-pkgdesc="An unofficial WhatsApp desktop client for Linux (YAWF — Yet Another WhatsApp Fork)"
-arch=('x86_64' 'aarch64')
+pkgdesc="An unofficial WhatsApp desktop client for Linux (YAWF)"
+arch=('x86_64')
 url="https://github.com/Wahid7852/YAWF"
 license=('GPL3')
-depends=('gtkmm3' 'webkit2gtk-4.1' 'libayatana-appindicator' 'libcanberra')
-makedepends=('cmake' 'intltool')
-optdepends=('hunspell: spell checking'
-            'grim: region screenshots on wlroots compositors'
-            'slurp: region selection on wlroots compositors')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/Wahid7852/YAWF/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
-
-_srcdir="WasIstLos-$pkgver"
-
-build() {
-    cmake -B build -S "$_srcdir" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/usr
-    cmake --build build
-}
+depends=('gtk3' 'nss' 'libxss' 'libxtst' 'at-spi2-core' 'libsecret' 'xdg-utils')
+provides=('yawf')
+source=("$pkgname-$pkgver.AppImage::https://github.com/Wahid7852/YAWF/releases/download/v$pkgver/YAWF-$pkgver.AppImage"
+        "yawf.desktop"
+        "yawf.png")
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP')
+noextract=("$pkgname-$pkgver.AppImage")
 
 package() {
-    DESTDIR="$pkgdir" cmake --install build
+    install -Dm755 "$pkgname-$pkgver.AppImage" "$pkgdir/opt/yawf/yawf.AppImage"
+    install -Dm644 "yawf.desktop" "$pkgdir/usr/share/applications/io.github.wahid7852.YAWF.desktop"
+    install -Dm644 "yawf.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/io.github.wahid7852.YAWF.png"
+
+    install -d "$pkgdir/usr/bin"
+    cat > "$pkgdir/usr/bin/yawf" << 'EOF'
+#!/bin/sh
+exec /opt/yawf/yawf.AppImage "$@"
+EOF
+    chmod 755 "$pkgdir/usr/bin/yawf"
 }

@@ -1,179 +1,116 @@
 # YAWF
 
-**Y**et **A**nother **W**hatsApp **F**ork — an unofficial WhatsApp desktop client
-for Linux, written in C++ with gtkmm and WebKitGTK. A maintained fork of
-[xeco23/WasIstLos](https://github.com/xeco23/WasIstLos).
+**Y**et **A**nother **W**hatsApp **F**ork, an unofficial WhatsApp desktop client for
+Linux, built on Electron. Originally a C++/gtkmm/WebKitGTK app (a fork of
+[xeco23/WasIstLos](https://github.com/xeco23/WasIstLos)), rewritten from scratch
+starting at version 3.0.0.
 
-![App Window](screenshot/app.png)
-
-[![Action Status](https://github.com/Wahid7852/YAWF/workflows/Linter/badge.svg)](https://github.com/Wahid7852/YAWF/actions/workflows/linter.yml)
 [![Action Status](https://github.com/Wahid7852/YAWF/workflows/Build/badge.svg)](https://github.com/Wahid7852/YAWF/actions/workflows/build.yml)
 [![Action Status](https://github.com/Wahid7852/YAWF/workflows/Release/badge.svg)](https://github.com/Wahid7852/YAWF/actions/workflows/release.yml)
 
-
 ## About
 
-YAWF wraps WhatsApp Web in a native WebKitGTK window and adds desktop integration
-(tray, notifications, autostart) plus a set of power-user features you don't get
-in the browser. It focuses on **reliability** (it recovers on its own when
-WhatsApp Web crashes) and **productivity** (clipboard image paste, Telegram-style
-formatting shortcuts, screenshot-to-chat).
-
+YAWF wraps WhatsApp Web in a dedicated window and adds the desktop integration
+and reliability work a browser tab doesn't do for you: it recovers on its own
+when WhatsApp Web crashes or hangs, keeps memory in check over long sessions,
+and adds the productivity features power users actually ask for, clipboard
+image paste, screenshot straight into a chat, markdown formatting shortcuts,
+multiple accounts at once.
 
 ## Features
 
-### Desktop integration
-* Everything WhatsApp Web offers, in a dedicated window
-* System tray icon, notification sounds, autostart with the system
-* Fullscreen mode and show/hide header bar (*Alt+H*)
-* Zoom in/out, configurable minimum font size and theme tweaks
-* Multiple accounts via `--profile <name>` (isolated session per profile)
-* Localization and spell checking in your system language (install the matching
-  dictionary, e.g. `hunspell-en_us`)
-* Open a chat directly by phone number
+**Desktop integration**
+- Tray icon with unread count, system notifications, autostart
+- Multiple accounts via `--profile <name>`, isolated session per profile
+- Zoom, fullscreen, spellcheck (native Chromium)
+- Open a chat directly by phone number, in-app dialog or `whatsapp:` deep link
+- CLI remote control: `yawf --show / --hide / --refresh / --quit`
+- Custom CSS at `~/.config/yawf/user.css`
 
-### Reliability
-* **Auto-recovery**: if WhatsApp Web hits its "We encountered a problem"
-  crash screen, the app reloads itself automatically (with a backoff so it
-  never loops endlessly)
-* **Memory-managed sessions**: WebKit memory pressure thresholds are derived
-  from your actual RAM (40% of physical memory, polled every 5 s) so the web
-  process never silently grows to an OOM crash. JavaScriptCore's concurrent and
-  generational GC are enabled to keep the heap lean during high-volume group chats
-* **Idle heap reset**: after 4 hours with no keyboard or scroll input, YAWF
-  silently reloads WhatsApp Web to clear accumulated JS heap. Messages reload
-  from local storage in seconds — no re-linking, no server re-fetch. Any
-  interaction resets the timer so active sessions are never interrupted
-* **Tray → Refresh**: on-demand reload from the system-tray menu when you notice
-  slowdown without waiting for the idle timer
-* Software-decode video workaround for glitchy hardware video paths
-* Web-browser cache model so reloads come back quickly from disk
+**Reliability**
+- Auto-recovery: reloads itself on renderer crashes and on WhatsApp Web's own
+  in-page "something went wrong" screen, with backoff so it never loops
+- Idle heap reset: reloads after 4h of no input to reclaim JS heap (configurable)
+- V8 memory capped at 40% of physical RAM instead of left unbounded
+- Built-in resource monitor (`Ctrl+Shift+R`): live CPU/RAM per process, no
+  guessing what the app is actually costing you
 
-### Power-user shortcuts
+**Power-user shortcuts**
+
 | Shortcut | Action |
-| --- | --- |
-| `Ctrl+V` / `Ctrl+Shift+V` | Paste an image from the clipboard into the composer |
-| `Ctrl+Shift+S` | Capture a screen region and drop it straight into the chat |
-| `Ctrl+B` | Wrap selection in `*bold*` |
-| `Ctrl+I` | Wrap selection in `_italic_` |
-| `Ctrl+Shift+X` | Wrap selection in `~strikethrough~` |
-| `Ctrl+Shift+M` | Wrap selection in ` ```monospace``` ` |
-| `Ctrl+Shift+N` | Clear formatting from the selection |
+|---|---|
+| `Ctrl+B` / `Ctrl+I` | Wrap selection in `*bold*` / `_italic_` |
+| `Ctrl+Shift+X` / `Ctrl+Shift+M` | Wrap in `~strikethrough~` / ` ```monospace``` ` |
+| `Ctrl+Shift+N` | Clear formatting from selection |
+| `Ctrl+Shift+V` | Force an image-only paste from the clipboard |
+| `Ctrl+Shift+S` | Capture a screen region straight into the chat |
+| `Ctrl+Shift+P` | Open a chat by phone number |
+| `Ctrl+=` / `Ctrl+-` / `Ctrl+0` | Zoom in / out / reset |
+| `F11` | Toggle fullscreen |
+| `Ctrl+/` | Shortcut list, in-app |
 
-* **Clipboard image paste** works even where WhatsApp Web's own paste does not —
-  copy a screenshot and paste it directly.
-* **Screenshot to chat** auto-detects your desktop's region-capture tool
-  (Spectacle on KDE, gnome-screenshot on GNOME, grim + slurp on wlroots, or
-  maim/flameshot/ImageMagick on X11).
-* **Send with Ctrl+Enter** (optional, off by default): enable it in Preferences
-  to make *Enter* insert a newline and *Ctrl+Enter* send the message.
-
-The full list is always available in-app via *Ctrl+?*.
-
+`Ctrl+Enter` to send instead of plain `Enter` is opt-in via Preferences.
 
 ## Install
 
-Grab a `.deb`, `.AppImage`, or `.snap` from the
-[Releases](https://github.com/Wahid7852/YAWF/releases) page, or use a package
-channel:
+Grab a `.deb`, `.AppImage`, `.rpm`, or `.pacman` from the
+[Releases](https://github.com/Wahid7852/YAWF/releases) page, or:
 
-* **Arch (AUR)**: `yay -S yawf` — packaging in [`packaging/aur`](packaging/aur)
-* **Flatpak / Flathub**: manifest in [`packaging/flatpak`](packaging/flatpak) *(submission in progress)*
-* **Snap**: `snap install yawf` *(publishing in progress)*
+- **Arch (AUR)**: `yay -S yawf-bin`, packaging in [`packaging/aur`](packaging/aur)
+- **Snap**, **Flatpak**: not published yet
 
-> Migrating from WasIstLos? On first launch YAWF copies your existing
-> `wasistlos` config, session and settings over, so you stay logged in.
+## Development
 
-
-## Dependencies
-
-* cmake >= 3.12
-* intltool
-* gtkmm-3.0
-* webkit2gtk-4.1
-* ayatana-appindicator3-0.1
-* libcanberra
-* libhunspell (optional, for spell checking)
-* A region-screenshot tool for *Ctrl+Shift+S* (optional): one of `spectacle`,
-  `gnome-screenshot`, `grim`+`slurp`, `maim`, `flameshot`, or ImageMagick
-
-
-## Build & Run
-
-```bash
-# Create a debug build directory and go into it
-mkdir -p build/debug && cd build/debug
-
-# Build the project
-cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr ../..
-make -j4
-
-# Run
-./yawf
+```
+npm install
+npm start
 ```
 
-> [!NOTE]
-> The GTK `.ui` resources are compiled at CMake **configure** time. If you change
-> a file under `resource/ui/`, re-run `cmake` before building so the change is
-> embedded.
+`npm run dist:linux` builds `.deb`/`.AppImage`/`.rpm`/`.pacman` via
+electron-builder (`electron-builder.yml`). Snap isn't in that list, it needs
+the same CI-only `snapcore/action-build` wrapper as everything else does for
+snap, plain electron-builder doesn't build it reliably here.
 
-### Local installation
+## Why this is different
 
-```bash
-# Run inside the build directory once the application is built (needs root)
-make install
-```
+Most "WhatsApp wrapper" projects, [elecwhat](https://github.com/piec/elecwhat)
+included, are a webview and a tray icon. This one treats the browser tab as
+the thing that fails, not the app around it. WhatsApp Web crashes, hangs, and
+leaks memory on its own, regardless of what shell it runs in. Crash
+auto-recovery, idle heap reset, forced image paste, screenshot-to-chat,
+multi-profile sessions all exist because the wrapper has to outlive the page
+it wraps, not because a browser tab was missing a couple of shortcuts.
 
-> [!TIP]
-> To keep a distro package from overwriting your build, install to `/usr/local`
-> (configure with `-DCMAKE_INSTALL_PREFIX=/usr/local`). It wins on `PATH` and
-> `XDG_DATA_DIRS`, and your package manager never touches `/usr/local`.
+The resource monitor is the clearest example of the difference in approach.
+Nobody ships a window that tells you what your own app is costing you in CPU
+and RAM, most Electron apps would rather you didn't look too closely. This one
+hands you the numbers, unprompted, updated every two seconds. Running
+Chromium instead of the old WebKitGTK build costs more memory, that's just
+true, so you get to see exactly how much instead of taking it on faith.
 
+Same instinct on security. The window that loads WhatsApp Web has no
+`contextBridge` exposure into the page and no `nodeIntegration`, so it has no
+way to reach the app's internals even in principle. Every IPC handler on top
+of that checks its sender is a window this app actually created. That's the
+difference between "should be fine" and "checked."
 
-## Repository layout
+And it's exercised against a real account before it ships, not just read
+over. The first packaged build had a fatal GPU crash and silently broken tray
+icons, both caught by actually running the thing and watching it fail.
 
-| Path | Contents |
-| --- | --- |
-| `src/` | Application sources (`ui/`, `util/`) |
-| `resource/` | GTK `.ui`, icons, desktop entry & AppStream metainfo, logo SVG sources |
-| `po/` | Translations |
-| `packaging/` | `appimage/`, `aur/`, `flatpak/` recipes |
-| `debian/`, `snap/` | Kept at the repo root because `dpkg-buildpackage` and `snapcraft` require them there |
+## Known gaps
 
-## Packaging
+- Tray icon doesn't register a StatusNotifierItem on some Wayland setups
+  (confirmed environment-level, not unique to this app), window hide/show
+  and notifications work regardless
+- `.rpm` build is untested locally (no `rpmbuild` available in dev), uses the
+  same pipeline as the verified `.deb`/`.pacman` builds
+- Locale support (the old app had 18) hasn't been ported yet
+- Flatpak and Launchpad PPA distribution are manual/unpublished for now
 
-YAWF ships as its own package (`yawf`, app-id `io.github.wahid7852.YAWF`) — it does
-not replace or conflict with the upstream `wasistlos` package. See
-[`RELEASING.md`](RELEASING.md) for how a release is cut and shipped to each channel.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the fuller list of what's been
+verified and how.
 
+## License
 
-## Roadmap / To-Do
-
-* Publish to Flathub and the Snap Store; submit/maintain the AUR package
-* Debian/Ubuntu PPA for easy `apt` installs
-* Translate the new UI strings (formatting shortcuts, preferences) into all locales
-* Optional global hotkey to show/hide the window from the tray
-* Per-chat notification controls and quiet hours
-* Theme polish and a few more built-in themes
-* CI: validate the `.desktop` and AppStream metainfo on every PR
-* Automated snap/flatpak build checks in CI
-
-
-## Contributing
-
-Please read [contributing](CONTRIBUTING.md).
-
-### Contributors
-
-* [Wahid7852](https://github.com/Wahid7852) — maintainer of this fork
-* [xeco23 (Enes Hecan)](https://github.com/xeco23) and the original WasIstLos
-  [contributors](https://github.com/xeco23/WasIstLos/graphs/contributors)
-
-[![Code Contributors](https://contrib.rocks/image?repo=Wahid7852/YAWF)](https://github.com/Wahid7852/YAWF/graphs/contributors)
-
-
-## Credits
-
-YAWF is a fork of the original [WasIstLos](https://github.com/xeco23/WasIstLos)
-by [xeco23 (Enes Hecan)](https://github.com/xeco23) and contributors. All credit
-for the original application goes to them. Licensed under GPL-3.0.
+GPL-3.0, see [`LICENSE`](LICENSE).

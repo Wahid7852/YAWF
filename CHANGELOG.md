@@ -3,6 +3,34 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## 3.0.0
+
+Full rewrite from C++/gtkmm/WebKitGTK to Electron. The old implementation
+(`src/`, CMake, debian/snap/AppImage/Flatpak packaging configs) is removed
+entirely, see `README.md` for the current feature set and `CONTRIBUTING.md`
+for what's been tested against a real account so far.
+
+### Added
+* In-app phone number dialog (`Ctrl+Shift+P`), separate from the `whatsapp:`
+  OS-level deep link
+* Zoom controls (`Ctrl+=`/`Ctrl+-`/`Ctrl+0`, persisted) and fullscreen (`F11`)
+* CLI remote control against an already-running instance
+  (`yawf --show/--hide/--refresh/--quit`)
+* Custom CSS support (`~/.config/yawf/user.css`)
+* Built-in resource monitor (`Ctrl+Shift+R`), live CPU/RAM per process
+* `.rpm` and `.pacman` packages, in addition to `.deb` and `.AppImage`
+
+### Changed
+* Spellcheck now uses Chromium's built-in spellchecker instead of an optional
+  libhunspell dependency
+* Memory management: V8 heap capped at 40% of physical RAM (same ratio as the
+  old WebKit memory-pressure tuning), idle heap reset carried over unchanged
+
+### Removed
+* The 18 bundled locales aren't ported yet, English only for now
+* Snap, Flatpak, and Launchpad PPA distribution are unpublished until rebuilt
+  for the new packaging pipeline
+
 ## 2.1.0
 
 ### Added

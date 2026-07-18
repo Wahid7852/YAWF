@@ -1,41 +1,8 @@
-# Compiled object files
-*.slo
-*.lo
-*.o
-*.obj
+# Dependencies
+node_modules/
 
-# Precompiled headers
-*.gch
-*.pch
-
-# Compiled dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Compiled static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Temporary ui files
-*.ui~
-*.ui#
-
-# Common build directory
-build/
-
-# app/build/icons is checked-in source assets for electron-builder, not a
-# generated build directory, unlike the CMake build/ this pattern targets
-!app/build/
-!app/build/icons/
-!app/build/icons/**
+# electron-builder output
+dist/
 
 # IDE folders
 .idea/
