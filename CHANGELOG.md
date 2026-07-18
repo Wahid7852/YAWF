@@ -45,12 +45,12 @@ for what's been tested against a real account so far.
 ## 2.1.0
 
 ### Added
-* **Auto-reload after 4 hours idle** — after four hours without a keypress or
+* **Auto-reload after 4 hours idle**: after four hours without a keypress or
   scroll, YAWF silently reloads WhatsApp Web to reclaim the JS heap that
   accumulates from high-volume group chats. Messages reload from local IndexedDB
   in seconds; no re-link or server re-fetch required. Any interaction resets the
   clock so active sessions are never interrupted.
-* **Tray → Refresh** — new menu item in the system-tray context menu for
+* **Tray > Refresh**: new menu item in the system-tray context menu for
   on-demand reload when you notice slowdown, without waiting for the idle timer.
 
 ### Fixed
@@ -93,7 +93,7 @@ First release of **YAWF** (Yet Another WhatsApp Fork), forked from
 * Rebranded to YAWF; binary is now `yawf`.
 * The linked device now identifies as Chrome on Linux instead of "Safari (Mac OS)",
   which also makes device linking reliable.
-* No longer force-kills the web process under memory pressure — that was corrupting
+* No longer force-kills the web process under memory pressure, that was corrupting
   WhatsApp's local database and logging you out / breaking device linking.
 * Disabled the DMABUF renderer to avoid a libEGL teardown crash on Intel/Mesa.
 * Faster warm reloads via the web-browser cache model.

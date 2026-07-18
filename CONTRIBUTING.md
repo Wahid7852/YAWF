@@ -63,11 +63,15 @@ written and reasoned through but never actually run, only a push to the
 `release` branch proves it. The 16 translation files are AI-generated and
 haven't had a native-speaker accuracy review.
 
-Tray icon registration (`StatusNotifierItem` over DBus) was confirmed absent
-on one Wayland/Hyprland setup, and confirmed to be an environment-level
-issue rather than an app bug (a completely unrelated Electron app on the same
-machine had the same gap). Window hide/show and OS notifications work
-regardless of whether the tray icon itself renders.
+Correction to an earlier version of this section: the tray icon was reported
+as not appearing on one Wayland/Hyprland setup, diagnosed via `busctl --user
+list` finding no named `org.kde.StatusNotifierItem-*` service for the
+process. That diagnosis was wrong - the icon does render there, confirmed
+directly. The registration apparently doesn't need a well-known bus name in
+this setup (an anonymous connection name is enough), so grepping for that
+specific naming pattern was never a valid way to check this in the first
+place. Noting the mistake rather than quietly deleting it: the fix here was
+trusting a direct report over a flawed automated check, not a code change.
 
 
 ## Donations

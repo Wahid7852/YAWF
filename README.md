@@ -139,9 +139,6 @@ to catch before it ships, and evidently didn't get caught here.
 
 ## Known gaps
 
-- Tray icon doesn't register a StatusNotifierItem on some Wayland setups
-  (confirmed environment-level, not unique to this app), window hide/show
-  and notifications work regardless
 - `.rpm` build is untested locally (no `rpmbuild` available in dev), uses the
   same pipeline as the verified `.deb`/`.pacman` builds
 - Translations (16 languages, see `src/locales/`) are AI-translated and
