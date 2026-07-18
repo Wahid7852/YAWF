@@ -20,8 +20,7 @@ for what's been tested against a real account so far.
 * Built-in resource monitor (`Ctrl+Shift+R`), live CPU/RAM per process
 * `.rpm` and `.pacman` packages, in addition to `.deb` and `.AppImage`
 * UI translated into 16 languages, matching the OS locale automatically
-  (the same set the old app shipped, minus none - see "Removed" in the
-  previous draft of this entry, which undersold it as 18 and not-yet-ported)
+  (the same set the old app shipped)
 
 ### Changed
 * Spellcheck now uses Chromium's built-in spellchecker instead of an optional
