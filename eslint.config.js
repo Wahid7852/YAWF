@@ -12,7 +12,10 @@ const nodeGlobals = {
   setInterval: 'readonly',
   clearInterval: 'readonly',
   clearTimeout: 'readonly',
+  setImmediate: 'readonly',
   URL: 'readonly',
+  Buffer: 'readonly',
+  fetch: 'readonly',
 };
 
 const browserGlobals = {
@@ -26,8 +29,10 @@ const browserGlobals = {
   clearTimeout: 'readonly',
   KeyboardEvent: 'readonly',
   ClipboardEvent: 'readonly',
+  CustomEvent: 'readonly',
   DataTransfer: 'readonly',
   File: 'readonly',
+  MutationObserver: 'readonly',
   Notification: 'readonly',
   WebSocket: 'readonly',
 };
@@ -72,6 +77,29 @@ module.exports = [
     },
   },
   {
+    // injected.js is never require()'d - it's read as a source string and run via
+    // webContents.executeJavaScript in the WhatsApp Web page's own main world, so it
+    // gets DOM globals plus WA Web's own webpack `require`, but no Node globals at all.
+    // deriveSessionStatus/EVT_*/YAWF_BRIDGE_TOKEN come from protocol.js/normalize.js's
+    // source being concatenated ahead of this file, and from main.js's wrapping IIFE
+    // parameter respectively (see main.js's buildBridgeSource) - eslint only sees this
+    // file in isolation, so they're declared here as globals rather than imports.
+    files: ['src/bridge/injected.js'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'script',
+      globals: {
+        ...browserGlobals,
+        require: 'readonly',
+        EVT_CALL: 'readonly',
+        EVT_RESULT: 'readonly',
+        EVT_PUSH: 'readonly',
+        deriveSessionStatus: 'readonly',
+        YAWF_BRIDGE_TOKEN: 'readonly',
+      },
+    },
+  },
+  {
     files: ['**/*.test.js'],
     languageOptions: {
       ecmaVersion: 2023,
@@ -81,7 +109,7 @@ module.exports = [
   },
   {
     rules: {
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
 ];
