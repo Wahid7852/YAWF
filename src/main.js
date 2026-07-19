@@ -4,6 +4,7 @@ const { app, BrowserWindow, ipcMain, shell, clipboard, nativeImage, Menu } = req
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
+const crypto = require('node:crypto');
 
 const { parseProfileArg, applyProfileUserDataPath } = require('./profile');
 const { Settings } = require('./settings');
@@ -12,8 +13,16 @@ const { createPreferencesWindow } = require('./windows/preferencesWindow');
 const { createPhoneDialog } = require('./windows/phoneDialog');
 const { createShortcutsWindow } = require('./windows/shortcutsWindow');
 const { createResourceMonitor } = require('./windows/resourceMonitor');
+const { createApiDashboard } = require('./windows/apiDashboardWindow');
 const { captureScreenshot } = require('./screenshot');
 const { createI18n } = require('./i18n');
+const { createApiServer } = require('./api/server');
+const { ApiKeyStore } = require('./api/apiKeyStore');
+const { AuditLog } = require('./api/auditLog');
+const { WebhookStore } = require('./api/webhooks/webhookStore');
+const { WebhookDispatcher } = require('./api/webhooks/dispatcher');
+const { BridgeClient } = require('./bridge/client');
+const { IPC_CALL, IPC_RESULT, IPC_EVENT, ALLOWED_PUSH_EVENTS } = require('./bridge/protocol');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com';
 const ICON_DIR = path.join(__dirname, '..', 'build', 'icons');
@@ -97,6 +106,19 @@ function onTrusted(channel, fn) {
   });
 }
 
+// A DELIBERATELY separate, narrower trust check from trustedWebContentsIds above -
+// mainWindow's WhatsApp Web page must never be added to that set (see the bridge
+// injection comment near injectBridge()), but the bridge relay channels below are
+// the one place main.js does expect traffic from that specific webContents. This
+// name is intentionally different from handleTrusted/onTrusted so a reviewer never
+// mistakes this for the same, stronger trust tier those grant to YAWF's own windows.
+function onFromMainWindow(channel, fn) {
+  ipcMain.on(channel, (event, ...args) => {
+    if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return;
+    fn(event, ...args);
+  });
+}
+
 let mainWindow = null;
 let tray = null;
 let settings = null;
@@ -107,6 +129,16 @@ let reloadBackoffMs = 2000;
 let idleCheckInterval = null;
 let lastActivity = Date.now();
 let pendingDeepLinkPhone = null;
+
+let apiKeyStore = null;
+let auditLog = null;
+let webhookStore = null;
+let webhookDispatcher = null;
+let apiServer = null;
+
+let bridgeToken = null;
+let bridgeClient = null;
+let bridgeSessionState = null;
 
 function chromeUserAgent() {
   return `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
@@ -158,6 +190,39 @@ function injectUserCss(win) {
   fs.readFile(USER_CSS_PATH, 'utf8', (err, css) => {
     if (err || !css.trim()) return;
     win.webContents.insertCSS(css).catch(() => {});
+  });
+}
+
+// Builds the source string run in the WhatsApp Web page's own main world via
+// executeJavaScript (NOT preload's isolated world - see the trust-boundary
+// comment on onFromMainWindow above). protocol.js and normalize.js are plain
+// CommonJS modules main.js/preload.js also require() normally; here their
+// source text is concatenated ahead of injected.js and the whole thing wrapped
+// in an IIFE that takes the per-launch token as its only parameter, since
+// injected.js is never require()'d and has no other way to receive it.
+function buildBridgeSource(token) {
+  const dir = path.join(__dirname, 'bridge');
+  const parts = [
+    fs.readFileSync(path.join(dir, 'protocol.js'), 'utf8'),
+    fs.readFileSync(path.join(dir, 'normalize.js'), 'utf8'),
+    fs.readFileSync(path.join(dir, 'injected.js'), 'utf8'),
+  ];
+  return `(function (YAWF_BRIDGE_TOKEN) {\n${parts.join('\n;\n')}\n})(${JSON.stringify(token)});`;
+}
+
+// Injects the Store bridge into the WhatsApp Web page. Gated behind
+// apiBridgeEnabled (default off) - see docs/automation-api.md for the current,
+// deliberately narrow scope (session status/QR via DOM signals, not WhatsApp's
+// internal webpack Store) and its unverified-against-a-live-account caveat.
+function injectBridge(win) {
+  if (!settings.get('apiBridgeEnabled')) return;
+  bridgeClient?.rejectAll('page reloaded, bridge re-injecting');
+  bridgeToken = crypto.randomBytes(16).toString('hex');
+  bridgeClient = new BridgeClient({
+    send: (payload) => win.webContents.send(IPC_CALL, { ...payload, token: bridgeToken }),
+  });
+  win.webContents.executeJavaScript(buildBridgeSource(bridgeToken)).catch((err) => {
+    console.error('[YAWF] bridge injection failed:', err.message);
   });
 }
 
@@ -280,6 +345,7 @@ function createMainWindow() {
   win.webContents.on('did-finish-load', () => {
     reloadBackoffMs = 2000;
     injectUserCss(win);
+    injectBridge(win);
   });
   win.webContents.on('render-process-gone', (_e, details) => {
     scheduleReload(`renderer gone: ${details.reason}`);
@@ -319,6 +385,43 @@ function openShortcutsWindow() {
 function openResourceMonitor() {
   return trustWindow(createResourceMonitor(mainWindow, i18n));
 }
+function openApiDashboard() {
+  return trustWindow(createApiDashboard(mainWindow, i18n));
+}
+
+// Stops any running API server instance. Safe to call whether or not one is running.
+async function stopApiServer() {
+  if (!apiServer) return;
+  await apiServer.stop();
+  apiServer = null;
+}
+
+// (Re)starts the API server to match current settings - called on startup and
+// whenever apiEnabled/apiPort/apiBindAddress change. A failed listen() (e.g.
+// EADDRINUSE from a second --profile sharing the default port) must not take
+// the rest of the app down with it, same spirit as the tray-creation try/catch.
+async function startApiServerIfEnabled() {
+  await stopApiServer();
+  if (!settings.get('apiEnabled')) return;
+  const server = createApiServer({
+    settings,
+    apiKeyStore,
+    auditLog,
+    webhookStore,
+    dispatcher: webhookDispatcher,
+    // Accessor, not a snapshot: bridgeClient is only set later, from
+    // did-finish-load, well after this server is constructed - see
+    // routes/session.js's comment for why capturing the value here directly
+    // would permanently see today's (pre-bridge) null.
+    getBridgeClient: () => bridgeClient,
+  });
+  try {
+    await server.start();
+    apiServer = server;
+  } catch (err) {
+    console.error('[YAWF] API server failed to start:', err.message);
+  }
+}
 
 function registerIpc() {
   handleTrusted('i18n:get-dict', () => i18n.dict);
@@ -326,8 +429,65 @@ function registerIpc() {
   handleTrusted('settings:set', (_e, key, value) => {
     settings.set(key, value);
     if (key === 'autostart') app.setLoginItemSettings({ openAtLogin: !!value });
+    if (['apiEnabled', 'apiPort', 'apiBindAddress'].includes(key)) startApiServerIfEnabled();
+    if (key === 'apiBridgeEnabled') {
+      // injectBridge() only runs from did-finish-load, so flip it on/off immediately
+      // by reloading rather than leaving the change to take effect on the next
+      // otherwise-triggered reload (crash recovery, idle reset, manual refresh).
+      bridgeClient?.rejectAll('bridge disabled');
+      if (!value) bridgeClient = null;
+      mainWindow?.loadURL(WHATSAPP_URL);
+    }
     broadcastSettings();
     return settings.getAll();
+  });
+
+  handleTrusted('api:get-status', () => ({
+    enabled: settings.get('apiEnabled'),
+    bridgeEnabled: settings.get('apiBridgeEnabled'),
+    port: settings.get('apiPort'),
+    bindAddress: settings.get('apiBindAddress'),
+    running: !!apiServer,
+    sessionState: bridgeSessionState,
+  }));
+  handleTrusted('api:list-keys', () => apiKeyStore.list());
+  handleTrusted('api:create-key', (_e, fields) => apiKeyStore.create(fields || {}));
+  handleTrusted('api:revoke-key', (_e, id) => apiKeyStore.revoke(id));
+  handleTrusted('api:remove-key', (_e, id) => apiKeyStore.remove(id));
+  handleTrusted('api:list-webhooks', () => webhookStore.list());
+  handleTrusted('api:create-webhook', (_e, fields) => webhookStore.create(fields || {}));
+  handleTrusted('api:update-webhook', (_e, id, patch) => webhookStore.update(id, patch || {}));
+  handleTrusted('api:remove-webhook', (_e, id) => webhookStore.remove(id));
+  handleTrusted('api:test-webhook', (_e, id) =>
+    webhookDispatcher.deliverTest(id, 'message.received', {
+      sender: 'test',
+      body: 'this is a test delivery from YAWF',
+      isGroup: false,
+      fromMe: false,
+    })
+  );
+  handleTrusted('api:get-audit', (_e, opts) => ({ entries: auditLog.read(opts || {}) }));
+
+  // Bridge relay - see onFromMainWindow's comment above for why this is a
+  // separate, narrower trust tier than handleTrusted/onTrusted. Everything
+  // arriving here is treated as data, never as a command: the token gate
+  // rejects anything not echoed from OUR OWN injected script instance, and a
+  // JSON round-trip on push-event data defeats prototype-pollution-shaped
+  // payloads by discarding any live object graph in favor of plain data.
+  onFromMainWindow(IPC_RESULT, (_e, msg) => {
+    if (!msg || msg.token !== bridgeToken) return;
+    bridgeClient?.handleResult(msg);
+  });
+  onFromMainWindow(IPC_EVENT, (_e, msg) => {
+    if (!msg || msg.token !== bridgeToken) return;
+    if (!ALLOWED_PUSH_EVENTS.includes(msg.type)) return;
+    let data;
+    try {
+      data = JSON.parse(JSON.stringify(msg.data));
+    } catch {
+      return;
+    }
+    if (msg.type === 'session.status') bridgeSessionState = data.state;
   });
   handleTrusted('clipboard:read-image', () => {
     const img = clipboard.readImage();
@@ -355,6 +515,8 @@ function registerIpc() {
   onTrusted('open-phone-dialog', openPhoneDialog);
   onTrusted('open-shortcuts', openShortcutsWindow);
   onTrusted('open-resource-monitor', openResourceMonitor);
+  onTrusted('open-api-dashboard', openApiDashboard);
+  onTrusted('open-preferences', openPreferencesWindow);
   handleTrusted('metrics:get', () => app.getAppMetrics());
   handleTrusted('phone-dialog:submit', (_e, phone) => {
     if (!mainWindow) return;
@@ -383,11 +545,19 @@ app.whenReady().then(() => {
   settings = new Settings(app.getPath('userData'));
   i18n = createI18n(app.getLocale());
   app.setAsDefaultProtocolClient('whatsapp');
+
+  const userDataDir = app.getPath('userData');
+  apiKeyStore = new ApiKeyStore(userDataDir);
+  auditLog = new AuditLog(userDataDir);
+  webhookStore = new WebhookStore(userDataDir);
+  webhookDispatcher = new WebhookDispatcher({ webhookStore });
+
   registerIpc();
 
   mainWindow = trustWindow(createMainWindow());
   lastActivity = Date.now();
   startIdleWatch();
+  startApiServerIfEnabled();
 
   // Tray creation touches icon files and a DBus-backed StatusNotifierItem, both of
   // which can fail for reasons outside our control (missing bundled asset, no SNI
@@ -402,6 +572,13 @@ app.whenReady().then(() => {
       onOpenPhoneDialog: openPhoneDialog,
       onShortcuts: openShortcutsWindow,
       onResourceMonitor: openResourceMonitor,
+      onApiDashboard: openApiDashboard,
+      isApiEnabled: () => !!settings.get('apiEnabled'),
+      onToggleApi: () => {
+        settings.set('apiEnabled', !settings.get('apiEnabled'));
+        startApiServerIfEnabled();
+        tray?.rebuildMenu();
+      },
       onQuit: () => {
         quitting = true;
         app.quit();

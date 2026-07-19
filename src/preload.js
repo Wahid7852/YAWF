@@ -6,6 +6,19 @@
 
 const { ipcRenderer } = require('electron');
 
+// Duplicated from src/bridge/protocol.js rather than require()'d: this preload
+// runs with sandbox:true, and Electron's sandboxed-preload loader only permits
+// require('electron') and Node builtins - requiring an arbitrary local file
+// here throws "module not found" and silently breaks preload loading entirely
+// (discovered by actually launching the app - see docs/automation-api.md).
+// Keep these six strings in sync with protocol.js if either ever changes.
+const EVT_CALL = 'yawf:bridge-call';
+const EVT_RESULT = 'yawf:bridge-result';
+const EVT_PUSH = 'yawf:bridge-event';
+const IPC_CALL = 'bridge:call';
+const IPC_RESULT = 'bridge:call-result';
+const IPC_EVENT = 'bridge:event';
+
 let cachedSettings = {};
 let cachedZoom = 1.0;
 
@@ -172,6 +185,20 @@ function pingActivity() {
 ['keydown', 'mousedown', 'mousemove', 'wheel'].forEach((type) =>
   document.addEventListener(type, pingActivity, { passive: true, capture: true }),
 );
+
+// Automation API bridge relay (see src/bridge/*). Purely a relay - preload never
+// interprets these payloads, just forwards them between the page's main world
+// (reached via CustomEvents on document, since isolated and main world share the
+// DOM but not JS object references) and the main process (via ipcRenderer/ipcMain).
+ipcRenderer.on(IPC_CALL, (_e, msg) => {
+  document.dispatchEvent(new CustomEvent(EVT_CALL, { detail: msg }));
+});
+document.addEventListener(EVT_RESULT, (e) => {
+  ipcRenderer.send(IPC_RESULT, e.detail);
+});
+document.addEventListener(EVT_PUSH, (e) => {
+  ipcRenderer.send(IPC_EVENT, e.detail);
+});
 
 // In-page crash detection: WhatsApp Web sometimes shows its own "something went
 // wrong" screen without the renderer process actually crashing, so
