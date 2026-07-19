@@ -63,6 +63,39 @@ written and reasoned through but never actually run, only a push to the
 `release` branch proves it. The 16 translation files are AI-generated and
 haven't had a native-speaker accuracy review.
 
+### Testing notes: chat navigation/search shortcuts (Alt+↑/↓, Ctrl+F, Ctrl+Shift+F)
+
+Verified against a real, logged-in WhatsApp account, driven over the Chrome
+DevTools Protocol (real key/mouse events injected at the Chromium input
+level, the same path physical hardware takes - not `element.click()` or
+`dispatchEvent(new MouseEvent(...))`, both of which WhatsApp Web's React
+click handlers silently ignore, confirmed by hand). `Alt+↓` pressed three
+times in a row opened three distinct chats (confirmed by comparing a hash of
+the open conversation's title, not the title text itself), and `Alt+↑`
+correctly returned to the previous one. `Ctrl+F` and `Ctrl+Shift+F` were
+confirmed to move keyboard focus to the main chat-list search box and the
+in-chat search box respectively (`document.activeElement`'s accessible label
+checked before/after, not just that no error was thrown).
+
+First implementation tracked the current chat by matching the open
+conversation's title text against chat-list row titles - this looked
+plausible reading the code but broke immediately under real testing (repeated
+`Alt+Down` kept landing on the same or a wrong chat). Second attempt stored a
+direct reference to the clicked row element - also broke, because WhatsApp
+Web recycles chat-list row DOM nodes on re-render even when the same chat
+stays in the same visual position, silently invalidating the stored
+reference within about a second. What actually works: tracking a plain
+integer index into the position-sorted, currently-rendered row list,
+resynced from scratch whenever the user clicks a chat directly. Neither
+failure mode was something a code read would have caught - both needed a
+real account and repeated key presses to surface.
+
+Not yet exercised: navigating past the edge of what WhatsApp Web currently
+has rendered (a virtualized list - this is a deliberate no-op today rather
+than an attempt to scroll and retry), and non-English UI languages for the
+`aria-label`-based selectors these shortcuts rely on (`Search`, `Search or
+start a new chat`).
+
 Correction to an earlier version of this section: the tray icon was reported
 as not appearing on one Wayland/Hyprland setup, diagnosed via `busctl --user
 list` finding no named `org.kde.StatusNotifierItem-*` service for the
