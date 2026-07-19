@@ -48,6 +48,27 @@
     <input type="number" id="idleReloadHours" min="0" max="24" />
   </div>
 
+  <div class="row">
+    <label for="apiEnabled">
+      <span data-i18n="prefs.apiEnabled.label">Enable automation API</span>
+      <span class="hint" data-i18n="prefs.apiEnabled.hint">Manage keys, webhooks and activity from the tray's API Dashboard</span>
+    </label>
+    <input type="checkbox" id="apiEnabled" />
+  </div>
+
+  <div class="row">
+    <label for="apiPort" data-i18n="prefs.apiPort.label">Automation API port</label>
+    <input type="number" id="apiPort" min="1" max="65535" />
+  </div>
+
+  <div class="row">
+    <label for="apiBridgeEnabled">
+      <span data-i18n="prefs.apiBridgeEnabled.label">Enable WhatsApp bridge (experimental)</span>
+      <span class="hint" data-i18n="prefs.apiBridgeEnabled.hint">Lets the API read session/QR status. Reloads WhatsApp Web when toggled.</span>
+    </label>
+    <input type="checkbox" id="apiBridgeEnabled" />
+  </div>
+
   <script src="i18n-apply.js"></script>
   <script src="preferences-renderer.js"></script>
 </body>

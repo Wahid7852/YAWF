@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+<title data-i18n="apiDashboard.title">YAWF Automation API</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #1e1e1e; color: #e8e8e8; }
+  h1 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+  h2 { font-size: 12px; font-weight: 600; margin: 20px 0 8px; color: #25d366; text-transform: uppercase; letter-spacing: 0.03em; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .row label { font-size: 13px; }
+  .hint { display: block; font-size: 11px; color: #888; margin-top: 2px; }
+  input[type="text"], input[type="number"], select {
+    background: #2a2a2a; color: #e8e8e8; border: 1px solid #444; border-radius: 4px; padding: 4px 6px; font-size: 12px;
+  }
+  button {
+    background: #2a2a2a; color: #e8e8e8; border: 1px solid #444; border-radius: 4px; padding: 4px 10px;
+    font-size: 12px; cursor: pointer;
+  }
+  button:hover { border-color: #25d366; }
+  button.danger:hover { border-color: #e05555; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+  th { text-align: left; color: #888; font-weight: 500; padding: 4px 8px 4px 0; border-bottom: 1px solid #333; }
+  td { padding: 5px 8px 5px 0; border-bottom: 1px solid #262626; vertical-align: top; }
+  td.mono { font-family: monospace; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; }
+  .badge.on { background: #1f3d2b; color: #25d366; }
+  .badge.off { background: #3a2a2a; color: #999; }
+  .new-key-box { background: #16321f; border: 1px solid #25d366; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 12px; word-break: break-all; display: none; }
+  .create-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .empty { font-size: 12px; color: #888; padding: 8px 0; }
+</style>
+</head>
+<body>
+  <h1 data-i18n="apiDashboard.heading">Automation API</h1>
+
+  <div class="row">
+    <label for="apiEnabled">
+      <span data-i18n="apiDashboard.enabled.label">Enable automation API</span>
+      <span class="hint" id="statusHint"></span>
+    </label>
+    <input type="checkbox" id="apiEnabled" />
+  </div>
+
+  <h2 data-i18n="apiDashboard.keysHeading">API keys</h2>
+  <table id="keysTable">
+    <thead>
+      <tr>
+        <th data-i18n="apiDashboard.colName">Name</th>
+        <th data-i18n="apiDashboard.colPrefix">Key</th>
+        <th data-i18n="apiDashboard.colRole">Role</th>
+        <th data-i18n="apiDashboard.colStatus">Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="keysRows"></tbody>
+  </table>
+  <div class="create-form">
+    <input type="text" id="newKeyName" data-i18n-placeholder="apiDashboard.keyNamePlaceholder" placeholder="key name" />
+    <select id="newKeyRole">
+      <option value="viewer">viewer</option>
+      <option value="operator" selected>operator</option>
+      <option value="admin">admin</option>
+    </select>
+    <button id="createKeyBtn" data-i18n="apiDashboard.createKey">Create key</button>
+  </div>
+  <div class="new-key-box" id="newKeyBox"></div>
+
+  <h2 data-i18n="apiDashboard.webhooksHeading">Webhooks</h2>
+  <table id="webhooksTable">
+    <thead>
+      <tr>
+        <th data-i18n="apiDashboard.colUrl">URL</th>
+        <th data-i18n="apiDashboard.colEvents">Events</th>
+        <th data-i18n="apiDashboard.colStatus">Status</th>
+        <th data-i18n="apiDashboard.colLastDelivery">Last delivery</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="webhooksRows"></tbody>
+  </table>
+  <div class="create-form">
+    <input type="text" id="newWebhookUrl" data-i18n-placeholder="apiDashboard.webhookUrlPlaceholder" placeholder="https://example.com/hook" style="width: 220px;" />
+    <input type="text" id="newWebhookSecret" data-i18n-placeholder="apiDashboard.webhookSecretPlaceholder" placeholder="secret" />
+    <input type="text" id="newWebhookEvents" data-i18n-placeholder="apiDashboard.webhookEventsPlaceholder" placeholder="message.received,message.edited" style="width: 220px;" />
+    <button id="createWebhookBtn" data-i18n="apiDashboard.createWebhook">Add webhook</button>
+  </div>
+
+  <h2 data-i18n="apiDashboard.auditHeading">Recent activity</h2>
+  <table id="auditTable">
+    <thead>
+      <tr>
+        <th data-i18n="apiDashboard.colTime">Time</th>
+        <th data-i18n="apiDashboard.colMethod">Method</th>
+        <th data-i18n="apiDashboard.colPath">Path</th>
+        <th data-i18n="apiDashboard.colStatus">Status</th>
+        <th data-i18n="apiDashboard.colKey">Key</th>
+      </tr>
+    </thead>
+    <tbody id="auditRows"></tbody>
+  </table>
+
+  <script src="i18n-apply.js"></script>
+  <script src="apiDashboard-renderer.js"></script>
+</body>
+</html>

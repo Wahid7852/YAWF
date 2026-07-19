@@ -1,7 +1,7 @@
 'use strict';
 
-const BOOL_FIELDS = ['ctrlEnterToSend', 'closeToTray', 'startMinimized', 'autostart'];
-const NUMBER_FIELDS = ['idleReloadHours'];
+const BOOL_FIELDS = ['ctrlEnterToSend', 'closeToTray', 'startMinimized', 'autostart', 'apiEnabled', 'apiBridgeEnabled'];
+const NUMBER_FIELDS = ['idleReloadHours', 'apiPort'];
 
 async function init() {
   window.__yawfApplyI18n();

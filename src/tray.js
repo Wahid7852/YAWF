@@ -29,6 +29,9 @@ function createTray({
   onOpenPhoneDialog,
   onShortcuts,
   onResourceMonitor,
+  onApiDashboard,
+  isApiEnabled,
+  onToggleApi,
   onQuit,
   isWindowVisible,
 }) {
@@ -46,6 +49,9 @@ function createTray({
       { label: t('tray.preferences'), click: onPreferences },
       { label: t('tray.shortcuts'), click: onShortcuts },
       { label: t('tray.resourceMonitor'), click: onResourceMonitor },
+      { type: 'separator' },
+      { label: t('tray.apiEnabled'), type: 'checkbox', checked: isApiEnabled(), click: onToggleApi },
+      { label: t('tray.apiDashboard'), click: onApiDashboard },
       { type: 'separator' },
       { label: t('tray.quit'), click: onQuit },
     ]);
