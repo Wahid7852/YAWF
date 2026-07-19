@@ -487,7 +487,11 @@ function registerIpc() {
     } catch {
       return;
     }
-    if (msg.type === 'session.status') bridgeSessionState = data.state;
+    if (msg.type === 'session.status') {
+      bridgeSessionState = data.state;
+    } else {
+      webhookDispatcher.dispatch(msg.type, data);
+    }
   });
   handleTrusted('clipboard:read-image', () => {
     const img = clipboard.readImage();
