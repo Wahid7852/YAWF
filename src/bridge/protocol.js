@@ -26,7 +26,7 @@ const ALLOWED_METHODS = ['session.getStatus', 'session.getQr'];
 
 // Event types the page is allowed to push unsolicited. Anything else arriving
 // on IPC_EVENT is dropped rather than forwarded anywhere.
-const ALLOWED_PUSH_EVENTS = ['session.status'];
+const ALLOWED_PUSH_EVENTS = ['session.status', 'message.received'];
 
 const protocol = {
   EVT_CALL,
