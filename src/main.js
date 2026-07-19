@@ -516,6 +516,18 @@ function registerIpc() {
   onTrusted('window:toggle-fullscreen', () => {
     if (mainWindow) mainWindow.setFullScreen(!mainWindow.isFullScreen());
   });
+  // WhatsApp Web's React click handlers ignore synthetic clicks dispatched
+  // from page/preload JS (element.click(), dispatchEvent(new MouseEvent(...)))
+  // - confirmed by hand while building chat navigation/search shortcuts. Real
+  // input events (the same path physical hardware takes) do work, so preload
+  // computes the target element's coordinates and asks main to inject a real
+  // click via sendInputEvent, rather than trying to click from page JS.
+  onTrusted('simulate-click', (_e, { x, y } = {}) => {
+    if (!mainWindow || typeof x !== 'number' || typeof y !== 'number') return;
+    const point = { x: Math.round(x), y: Math.round(y) };
+    mainWindow.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...point });
+    mainWindow.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...point });
+  });
   onTrusted('open-phone-dialog', openPhoneDialog);
   onTrusted('open-shortcuts', openShortcutsWindow);
   onTrusted('open-resource-monitor', openResourceMonitor);
