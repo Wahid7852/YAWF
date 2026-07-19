@@ -65,6 +65,83 @@ async function dropImageIntoComposer(dataUrl) {
   composer.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt }));
 }
 
+// WhatsApp Web's own React click handlers ignore .click()/dispatchEvent(new
+// MouseEvent(...)) - confirmed by hand while building this feature. Real click
+// events (the same path physical hardware input takes) are required, so this
+// asks main to inject one via webContents.sendInputEvent at the given point.
+function simulateClickOn(el) {
+  const rect = el.getBoundingClientRect();
+  ipcRenderer.send('simulate-click', { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
+}
+
+function getChatRows() {
+  return Array.from(document.querySelectorAll('#pane-side [role="row"]'));
+}
+
+function sortedChatRows() {
+  return getChatRows()
+    .map((row) => ({ row, top: row.getBoundingClientRect().y }))
+    .sort((a, b) => a.top - b.top);
+}
+
+// Tracks position by INDEX into the currently-rendered, position-sorted row
+// list, not by DOM element reference or title text - both turned out
+// unreliable in practice (confirmed by hand): WhatsApp Web recycles chat-list
+// row elements on re-render even when the same chat stays in the same visual
+// position, which invalidates a stored element reference within a second or
+// two; and matching by title text kept landing on the same/wrong chat since
+// it's ambiguous which occurrence of a re-rendered row to trust. An index is
+// stable as long as the list itself doesn't reorder between key presses -
+// resynced from the actual click position whenever the user clicks a chat
+// directly, so it doesn't drift out of sync with manual clicking.
+let yawfCurrentChatIndex = -1;
+document.addEventListener(
+  'click',
+  (e) => {
+    const row = e.target.closest && e.target.closest('#pane-side [role="row"]');
+    if (!row) return;
+    yawfCurrentChatIndex = sortedChatRows().findIndex((r) => r.row === row);
+  },
+  true
+);
+
+// Alt+Up/Alt+Down: move to the previous/next chat and open it. Only
+// navigates among chats WhatsApp Web currently has rendered (it virtualizes
+// the list) - at the top/bottom of what's rendered this is a no-op rather
+// than scrolling to reveal more, a deliberate scope limit rather than an
+// oversight.
+function navigateChat(direction) {
+  const rows = sortedChatRows();
+  if (rows.length === 0) return;
+  const targetIndex = yawfCurrentChatIndex + direction;
+  if (targetIndex < 0 || targetIndex >= rows.length) return;
+  yawfCurrentChatIndex = targetIndex;
+  simulateClickOn(rows[targetIndex].row);
+}
+
+// Ctrl+F: focus the main chat-list search box.
+function openMainSearch() {
+  document.querySelector('[aria-label="Search or start a new chat"]')?.focus();
+}
+
+// Ctrl+Shift+F: focus the in-chat message search, opening it first if it
+// isn't already open (its trigger is a plain button with no other selector,
+// found by its accessible label - matches the "Search" label WhatsApp Web
+// itself uses, in English locales).
+function openInChatSearch() {
+  const existing = document.querySelector('input[aria-label="Search"]');
+  if (existing) {
+    existing.focus();
+    return;
+  }
+  const button = document.querySelector('button[aria-label="Search"]');
+  if (!button) return;
+  simulateClickOn(button);
+  setTimeout(() => {
+    document.querySelector('input[aria-label="Search"]')?.focus();
+  }, 200);
+}
+
 function sendCtrlEnterAsEnter(composer) {
   const evt = new KeyboardEvent('keydown', {
     key: 'Enter',
@@ -82,6 +159,14 @@ document.addEventListener(
   'keydown',
   (e) => {
     const ctrlOrCmd = e.ctrlKey || e.metaKey;
+
+    // Alt+Up / Alt+Down: previous/next chat (not Ctrl-gated, so this must be
+    // checked before the ctrlOrCmd early-return below)
+    if (e.altKey && !ctrlOrCmd && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      navigateChat(e.key === 'ArrowUp' ? -1 : 1);
+      return;
+    }
 
     // Ctrl+Enter send mode (opt-in, see Preferences)
     if (cachedSettings.ctrlEnterToSend && e.key === 'Enter') {
@@ -134,6 +219,12 @@ document.addEventListener(
     } else if (e.shiftKey && e.key.toLowerCase() === 'r') {
       e.preventDefault();
       ipcRenderer.send('open-resource-monitor');
+    } else if (!e.shiftKey && e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      openMainSearch();
+    } else if (e.shiftKey && e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      openInChatSearch();
     } else if (e.key === '/') {
       // Ctrl+/ (Ctrl+Shift+/ on US layout produces '?', either is fine here)
       e.preventDefault();
