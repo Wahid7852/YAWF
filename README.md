@@ -8,6 +8,21 @@ starting at version 3.0.0.
 [![Action Status](https://github.com/Wahid7852/YAWF/workflows/Build/badge.svg)](https://github.com/Wahid7852/YAWF/actions/workflows/build.yml)
 [![Action Status](https://github.com/Wahid7852/YAWF/workflows/Release/badge.svg)](https://github.com/Wahid7852/YAWF/actions/workflows/release.yml)
 
+## Screenshots
+
+<p>
+  <img src="screenshots/login.png" alt="WhatsApp Web login screen inside YAWF" width="420" />
+  <img src="screenshots/preferences.png" alt="YAWF Preferences window" width="420" />
+</p>
+<p>
+  <img src="screenshots/resource-monitor.png" alt="Live per-process CPU/RAM resource monitor" width="420" />
+  <img src="screenshots/api-dashboard.png" alt="Automation API dashboard: keys, webhooks, activity" width="420" />
+</p>
+<p>
+  <img src="screenshots/shortcuts.png" alt="Keyboard shortcuts reference window" width="420" />
+  <img src="screenshots/phone-dialog.png" alt="Open a chat by phone number dialog" width="420" />
+</p>
+
 ## About
 
 YAWF wraps WhatsApp Web in a dedicated window and adds the desktop integration
