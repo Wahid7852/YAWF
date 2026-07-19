@@ -19,6 +19,9 @@
     "dist": "electron-builder",
     "dist:linux": "electron-builder --linux deb AppImage snap rpm pacman"
   },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "electron": "^43.1.0",
