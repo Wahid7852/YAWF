@@ -61,6 +61,9 @@ multiple accounts at once.
 | `Ctrl+Shift+V` | Force an image-only paste from the clipboard |
 | `Ctrl+Shift+S` | Capture a screen region straight into the chat |
 | `Ctrl+Shift+P` | Open a chat by phone number |
+| `Alt+↑` / `Alt+↓` | Previous / next chat |
+| `Ctrl+F` | Search chats |
+| `Ctrl+Shift+F` | Search within the open chat |
 | `Ctrl+=` / `Ctrl+-` / `Ctrl+0` | Zoom in / out / reset |
 | `F11` | Toggle fullscreen |
 | `Ctrl+/` | Shortcut list, in-app |
