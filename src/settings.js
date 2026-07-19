@@ -10,6 +10,13 @@ const DEFAULTS = {
   autostart: false,
   idleReloadHours: 4,
   zoomFactor: 1.0,
+  apiEnabled: false,
+  apiBridgeEnabled: false,
+  apiPort: 7862,
+  apiBindAddress: '127.0.0.1',
+  apiRateLimitPerMin: 60,
+  apiMessageRateLimitPerMin: 20,
+  apiAuditLogBodies: false,
 };
 
 class Settings {
