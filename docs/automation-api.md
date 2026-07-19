@@ -24,7 +24,23 @@ YAWF already uses for crash-screen detection and the unread-count badge, **not**
 by reaching into WhatsApp Web's internal JS Store the way whatsapp-web.js does.
 The selectors this relies on are best-effort and may need retuning if WhatsApp
 Web's markup changes - if `session.getStatus`/`session.getQr` stop reflecting
-reality, that's the first place to look (`src/bridge/injected.js`).
+reality, that's the first place to look (`src/bridge/injected.js`). Verified
+live: `session.getStatus` correctly returns `CONNECTED` on an authenticated
+account and `PAIRING` on the login/QR screen; `session.getQr` returns a real,
+scannable QR data URL when unauthenticated and 404s when already logged in.
+
+The same bridge also watches the **currently open chat** for new incoming
+messages and dispatches `message.received` webhooks, again via DOM position
+(an incoming bubble left-anchors, an outgoing one right-anchors - compared
+against the message panel's midpoint so it's resolution-independent) rather
+than WhatsApp's internal Store. Verified live: sending a real message produced
+a `message.received` webhook with the correct id, `fromMe: false`, timestamp,
+and exact body length, HMAC-signed correctly. Known gaps in this version:
+messages arriving in chats other than the one currently open are not detected;
+`sender`/`recipient`/`isGroup`/`mentions` are not populated (always
+`null`/`[]`) since group-chat sender-name attribution hasn't been verified
+yet; `hasMedia` is confirmed for document/audio attachments specifically,
+other media types fall back to a "no text content" heuristic.
 
 ## Authentication
 
