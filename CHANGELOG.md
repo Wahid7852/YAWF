@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## 3.0.1
+
+### Fixed
+* Main window showed a blank page when WhatsApp Web couldn't be reached. It now
+  shows an offline page and keeps retrying with backoff until the network is back.
+
 ## 3.0.0
 
 Full rewrite from C++/gtkmm/WebKitGTK to Electron. The old implementation

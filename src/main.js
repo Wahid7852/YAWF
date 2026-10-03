@@ -343,15 +343,19 @@ function createMainWindow() {
   });
 
   win.webContents.on('did-finish-load', () => {
-    reloadBackoffMs = 2000;
+    // The offline page also fires this; resetting then would defeat the backoff.
+    if (win.webContents.getURL().startsWith(WHATSAPP_URL)) reloadBackoffMs = 2000;
     injectUserCss(win);
     injectBridge(win);
   });
   win.webContents.on('render-process-gone', (_e, details) => {
     scheduleReload(`renderer gone: ${details.reason}`);
   });
-  win.webContents.on('did-fail-load', (_e, code) => {
-    if (code !== -3) scheduleReload(`load failed (${code})`);
+  win.webContents.on('did-fail-load', (_e, code, _desc, _url, isMainFrame) => {
+    if (code === -3) return;
+    // A blank window with no network is useless (and fails catalog checks).
+    if (isMainFrame) win.loadFile(path.join(__dirname, 'offline.html'));
+    scheduleReload(`load failed (${code})`);
   });
   win.webContents.on('page-title-updated', (_e, title) => updateBadgeFromTitle(title));
 
