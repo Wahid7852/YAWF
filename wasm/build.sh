@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-clang --target=wasm32 -O3 -nostdlib -fno-builtin -mbulk-memory \
+clang --target=wasm32 -O3 -nostdlib -fno-builtin -mbulk-memory -Wno-unused-const-variable \
   -Wl,--no-entry -Wl,--strip-all -Wl,-z,stack-size=65536 \
   -o wasm/ed25519_verify.wasm wasm/ed25519_verify.c
 

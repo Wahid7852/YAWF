@@ -457,55 +457,320 @@ static int crypto_sign_open(u8 *m,u64 *mlen,const u8 *sm,u64 n,const u8 *pk)
 }
 
 /* ---- YAWF: faster verification, same math ------------------------------
- * crypto_sign_open above computes h*(-A) and s*B with two separate 256-step
- * constant-time ladders (two full point additions per bit, ~10k field
- * multiplications). Verification only handles public data, so yawf_sign_open
- * below does the same computation as one variable-time double-scalar
- * multiplication (ref10-style sliding windows + dedicated doubling), ~3x fewer
- * field multiplications. Results are identical, not just "also valid":
- *  - tweetnacl's add() and the a = -1 doubling below are complete on Ed25519
- *    (a square, d non-square), so every on-curve point, torsion included,
- *    lands on the exact same group element; pack() then encodes it the same.
- *  - B has prime order L, so s*B == (s mod L)*B for any 256-bit s - which also
- *    reproduces tweetnacl accepting s >= L. Reducing s first keeps both
- *    scalars < 2^253, the range slide() is correct for.
- * Field arithmetic is tweetnacl's own (A/Z/M/S/pack/unpackneg, unchanged).
- * Differential-tested against the original crypto_sign_open: wasm/difftest.c. */
+ * crypto_sign_open above is the reference. yawf_sign_open below computes the
+ * exact same thing faster; wasm/difftest.c checks the two against each other.
+ *
+ * 1. One variable-time double-scalar multiplication (ref10-style sliding
+ *    windows + dedicated doubling) replaces the two 256-step constant-time
+ *    ladders. Verification only touches public data. Results are identical:
+ *    tweetnacl's addition law and the a = -1 doubling are complete on Ed25519
+ *    (a square, d non-square), so every on-curve point - torsion included -
+ *    lands on the same group element. B has prime order L, so
+ *    s*B == (s mod L)*B for any 256-bit s, which also reproduces tweetnacl
+ *    accepting s >= L; reducing s first keeps both scalars < 2^253, the range
+ *    slide() is correct for.
+ * 2. Field elements are 10 signed limbs in radix 2^25.5 (~100 multiplies per
+ *    field multiplication instead of 256). Field arithmetic is exact, so the
+ *    representation can't change results. Every add/sub carries, keeping
+ *    limbs within ~2^26 going into fe_mul (products < 2^61, no i64 overflow).
+ *    Bytes in and out go through tweetnacl's own unpack25519/pack25519, so
+ *    masking of bit 255 and canonical encoding are the original code.
+ * 3. Inversion and the (p-5)/8 power use ref10's addition chains: the same
+ *    exponents as tweetnacl's inv25519/pow2523, about half the multiplies.
+ * 4. yawf_xeddsa_open adds WhatsApp's Signal-variant key conversion
+ *    (WASignalSignatures in WhatsApp Web), see there. */
 
-/* p = 2p, dbl-2008-hwcd with a = -1 (4M + 4S) */
-sv dbl(gf p[4])
-{
-  gf a, b, c, e, f, g, h, t;
-  S(a, p[0]);
-  S(b, p[1]);
-  S(c, p[2]);
-  A(c, c, c);
-  A(t, p[0], p[1]);
-  S(t, t);
-  Z(e, t, a);
-  Z(e, e, b);
-  Z(g, b, a);
-  Z(f, g, c);
-  Z(h, gf0, a);
-  Z(h, h, b);
-  M(p[0], e, f);
-  M(p[1], g, h);
-  M(p[2], f, g);
-  M(p[3], e, h);
-}
+typedef i64 fe[10];
 
-sv neg(gf r[4], gf p[4])
-{
-  Z(r[0], gf0, p[0]);
-  set25519(r[1], p[1]);
-  set25519(r[2], p[2]);
-  Z(r[3], gf0, p[3]);
-}
+/* limb i holds bits [P[i], P[i+1]) */
+static const int P[11] = {0, 26, 51, 77, 102, 128, 153, 179, 204, 230, 255};
+#define W(i) (P[(i) + 1] - P[i])
+/* clang won't fully unroll these on its own; unrolled is ~2x faster in V8 */
+#define UNROLL _Pragma("clang loop unroll(full)")
 
-sv cpy(gf r[4], gf p[4])
+/* one floor-carry pass: limbs 1..9 land in [0, 2^W), limb 0 within 2^26 +- 19*carry */
+sv fe_carry(fe h)
 {
   int i;
-  FOR(i, 4) set25519(r[i], p[i]);
+  i64 c;
+  UNROLL for (i = 0; i < 9; ++i) {
+    c = h[i] >> W(i);
+    h[i] -= c << W(i);
+    h[i + 1] += c;
+  }
+  c = h[9] >> 25;
+  h[9] -= c << 25;
+  h[0] += 19 * c;
+}
+
+/* 32 bytes -> fe; bit 255 ignored, exactly like unpack25519 */
+sv fe_frombytes(fe h, const u8 *s)
+{
+  int i, b;
+  FOR(i, 10) {
+    h[i] = 0;
+    for (b = 0; b < W(i); ++b) {
+      int bit = P[i] + b;
+      h[i] |= (i64) ((s[bit >> 3] >> (bit & 7)) & 1) << b;
+    }
+  }
+}
+
+/* fe -> canonical 32 bytes, via tweetnacl's pack25519 */
+sv fe_tobytes(u8 *s, const fe f)
+{
+  fe h;
+  gf g;
+  int i, b, round;
+  FOR(i, 10) h[i] = f[i];
+  /* normalise to a non-negative value < 2^255 (congruent mod p) */
+  for (round = 0; round < 4; ++round) fe_carry(h);
+  FOR(i, 32) s[i] = 0;
+  FOR(i, 10) for (b = 0; b < W(i); ++b) {
+    int bit = P[i] + b;
+    s[bit >> 3] |= (u8) (((h[i] >> b) & 1) << (bit & 7));
+  }
+  unpack25519(g, s);
+  pack25519(s, g);
+}
+
+sv fe_copy(fe h, const fe f) { int i; FOR(i, 10) h[i] = f[i]; }
+sv fe_0(fe h) { int i; FOR(i, 10) h[i] = 0; }
+sv fe_1(fe h) { fe_0(h); h[0] = 1; }
+sv fe_add(fe h, const fe f, const fe g) { int i; FOR(i, 10) h[i] = f[i] + g[i]; fe_carry(h); }
+sv fe_sub(fe h, const fe f, const fe g) { int i; FOR(i, 10) h[i] = f[i] - g[i]; fe_carry(h); }
+
+/* h = f * g. Limb positions add up except for odd*odd (one extra bit -> x2);
+ * terms past limb 9 wrap with 2^255 = 19 (mod p). Inputs within ~2^26, so
+ * every product is < 2^58 and each column sum < 2^61. */
+sv fe_mul(fe h, const fe f, const fe g)
+{
+  i64 t[10], g2[10], g19[10], g38[10];
+  int i, j;
+  FOR(j, 10) {
+    g2[j] = 2 * g[j];
+    g19[j] = 19 * g[j];
+    g38[j] = 38 * g[j];
+  }
+  FOR(i, 10) t[i] = 0;
+  UNROLL for (i = 0; i < 10; ++i) UNROLL for (j = 0; j < 10; ++j) {
+    int odd = i & j & 1;
+    if (i + j < 10) t[i + j] += f[i] * (odd ? g2[j] : g[j]);
+    else t[i + j - 10] += f[i] * (odd ? g38[j] : g19[j]);
+  }
+  FOR(i, 10) h[i] = t[i];
+  fe_carry(h);
+  fe_carry(h);
+}
+
+/* h = f^2: fe_mul's terms, each off-diagonal pair counted once and doubled */
+sv fe_sq(fe h, const fe f)
+{
+  i64 t[10], f2[10];
+  int i, j;
+  FOR(i, 10) f2[i] = 2 * f[i];
+  FOR(i, 10) t[i] = 0;
+  UNROLL for (i = 0; i < 10; ++i) UNROLL for (j = i; j < 10; ++j) {
+    i64 prod = f[i] * (i == j ? f[j] : f2[j]);
+    if (i & j & 1) prod *= 2;
+    if (i + j < 10) t[i + j] += prod;
+    else t[i + j - 10] += 19 * prod;
+  }
+  FOR(i, 10) h[i] = t[i];
+  fe_carry(h);
+  fe_carry(h);
+}
+
+sv fe_sqn(fe h, const fe f, int n)
+{
+  fe_sq(h, f);
+  while (--n > 0) fe_sq(h, h);
+}
+
+/* z^(p-2) = z^(2^255 - 21): same exponent as inv25519 (so 0 -> 0) */
+sv fe_invert(fe out, const fe z)
+{
+  fe t0, t1, t2, t3;
+  fe_sq(t0, z);
+  fe_sqn(t1, t0, 2);
+  fe_mul(t1, z, t1);
+  fe_mul(t0, t0, t1);
+  fe_sq(t2, t0);
+  fe_mul(t1, t1, t2);
+  fe_sqn(t2, t1, 5);
+  fe_mul(t1, t2, t1);
+  fe_sqn(t2, t1, 10);
+  fe_mul(t2, t2, t1);
+  fe_sqn(t3, t2, 20);
+  fe_mul(t2, t3, t2);
+  fe_sqn(t2, t2, 10);
+  fe_mul(t1, t2, t1);
+  fe_sqn(t2, t1, 50);
+  fe_mul(t2, t2, t1);
+  fe_sqn(t3, t2, 100);
+  fe_mul(t2, t3, t2);
+  fe_sqn(t2, t2, 50);
+  fe_mul(t1, t2, t1);
+  fe_sqn(t1, t1, 5);
+  fe_mul(out, t1, t0);
+}
+
+/* z^((p-5)/8) = z^(2^252 - 3): same exponent as pow2523 */
+sv fe_pow2523(fe out, const fe z)
+{
+  fe t0, t1, t2;
+  fe_sq(t0, z);
+  fe_sqn(t1, t0, 2);
+  fe_mul(t1, z, t1);
+  fe_mul(t0, t0, t1);
+  fe_sq(t0, t0);
+  fe_mul(t0, t1, t0);
+  fe_sqn(t1, t0, 5);
+  fe_mul(t0, t1, t0);
+  fe_sqn(t1, t0, 10);
+  fe_mul(t1, t1, t0);
+  fe_sqn(t2, t1, 20);
+  fe_mul(t1, t2, t1);
+  fe_sqn(t1, t1, 10);
+  fe_mul(t0, t1, t0);
+  fe_sqn(t1, t0, 50);
+  fe_mul(t1, t1, t0);
+  fe_sqn(t2, t1, 100);
+  fe_mul(t1, t2, t1);
+  fe_sqn(t1, t1, 50);
+  fe_mul(t0, t1, t0);
+  fe_sqn(t0, t0, 2);
+  fe_mul(out, t0, z);
+}
+
+static int fe_neq(const fe a, const fe b)
+{
+  u8 c[32], d[32];
+  fe_tobytes(c, a);
+  fe_tobytes(d, b);
+  return crypto_verify_32(c, d);
+}
+
+static u8 fe_par(const fe a)
+{
+  u8 d[32];
+  fe_tobytes(d, a);
+  return d[0] & 1;
+}
+
+/* tweetnacl constants, converted once */
+static fe fe_zero, fe_one, fD, fD2, fX, fY, fI;
+static int consts_ready = 0;
+
+sv gf_to_fe(fe h, const gf g)
+{
+  u8 s[32];
+  pack25519(s, g);
+  fe_frombytes(h, s);
+}
+
+sv point_cpy(fe r[4], fe p[4]) { int i; FOR(i, 4) fe_copy(r[i], p[i]); }
+
+sv point_neg(fe r[4], fe p[4])
+{
+  fe_sub(r[0], fe_zero, p[0]);
+  fe_copy(r[1], p[1]);
+  fe_copy(r[2], p[2]);
+  fe_sub(r[3], fe_zero, p[3]);
+}
+
+/* p = p + q, tweetnacl's add() formula */
+sv point_add(fe p[4], fe q[4])
+{
+  fe a, b, c, d, t, e, f, g, h;
+  fe_sub(a, p[1], p[0]);
+  fe_sub(t, q[1], q[0]);
+  fe_mul(a, a, t);
+  fe_add(b, p[0], p[1]);
+  fe_add(t, q[0], q[1]);
+  fe_mul(b, b, t);
+  fe_mul(c, p[3], q[3]);
+  fe_mul(c, c, fD2);
+  fe_mul(d, p[2], q[2]);
+  fe_add(d, d, d);
+  fe_sub(e, b, a);
+  fe_sub(f, d, c);
+  fe_add(g, d, c);
+  fe_add(h, b, a);
+  fe_mul(p[0], e, f);
+  fe_mul(p[1], h, g);
+  fe_mul(p[2], g, f);
+  fe_mul(p[3], e, h);
+}
+
+/* p = 2p, dbl-2008-hwcd with a = -1 (4M + 4S) */
+sv point_dbl(fe p[4])
+{
+  fe a, b, c, e, f, g, h, t;
+  fe_sq(a, p[0]);
+  fe_sq(b, p[1]);
+  fe_sq(c, p[2]);
+  fe_add(c, c, c);
+  fe_add(t, p[0], p[1]);
+  fe_sq(t, t);
+  fe_sub(e, t, a);
+  fe_sub(e, e, b);
+  fe_sub(g, b, a);
+  fe_sub(f, g, c);
+  fe_sub(h, fe_zero, a);
+  fe_sub(h, h, b);
+  fe_mul(p[0], e, f);
+  fe_mul(p[1], g, h);
+  fe_mul(p[2], f, g);
+  fe_mul(p[3], e, h);
+}
+
+/* tweetnacl's pack() */
+sv point_pack(u8 *r, fe p[4])
+{
+  fe tx, ty, zi;
+  fe_invert(zi, p[2]);
+  fe_mul(tx, p[0], zi);
+  fe_mul(ty, p[1], zi);
+  fe_tobytes(r, ty);
+  r[31] ^= fe_par(tx) << 7;
+}
+
+/* tweetnacl's unpackneg(), line for line */
+static int point_unpackneg(fe r[4], const u8 p[32])
+{
+  fe t, chk, num, den, den2, den4, den6;
+  fe_1(r[2]);
+  fe_frombytes(r[1], p);
+  fe_sq(num, r[1]);
+  fe_mul(den, num, fD);
+  fe_sub(num, num, r[2]);
+  fe_add(den, r[2], den);
+
+  fe_sq(den2, den);
+  fe_sq(den4, den2);
+  fe_mul(den6, den4, den2);
+  fe_mul(t, den6, num);
+  fe_mul(t, t, den);
+
+  fe_pow2523(t, t);
+  fe_mul(t, t, num);
+  fe_mul(t, t, den);
+  fe_mul(t, t, den);
+  fe_mul(r[0], t, den);
+
+  fe_sq(chk, r[0]);
+  fe_mul(chk, chk, den);
+  if (fe_neq(chk, num)) fe_mul(r[0], r[0], fI);
+
+  fe_sq(chk, r[0]);
+  fe_mul(chk, chk, den);
+  if (fe_neq(chk, num)) return -1;
+
+  if (fe_par(r[0]) == (p[31] >> 7)) fe_sub(r[0], fe_zero, r[0]);
+
+  fe_mul(r[3], r[0], r[1]);
+  return 0;
 }
 
 /* signed sliding window (ref10's slide): r[i] in {0, +-1, +-3, ..., +-15},
@@ -533,67 +798,77 @@ static void slide(signed char *r, const u8 *a)
   }
 }
 
-/* odd multiples 1B, 3B, ..., 15B of the base point, built once */
-static gf Bi[8][4];
-static int Bi_ready = 0;
-
-sv odd_multiples(gf out[8][4], gf p[4])
+/* odd multiples 1P, 3P, ..., 15P */
+sv odd_multiples(fe out[8][4], fe p[4])
 {
-  gf p2[4];
+  fe p2[4];
   int i;
-  cpy(out[0], p);
-  cpy(p2, p);
-  dbl(p2);
+  point_cpy(out[0], p);
+  point_cpy(p2, p);
+  point_dbl(p2);
   for (i = 1; i < 8; ++i) {
-    cpy(out[i], out[i - 1]);
-    add(out[i], p2);
+    point_cpy(out[i], out[i - 1]);
+    point_add(out[i], p2);
   }
+}
+
+static fe Bi[8][4];
+
+sv init_consts(void)
+{
+  fe base[4];
+  if (consts_ready) return;
+  gf_to_fe(fe_zero, gf0);
+  gf_to_fe(fe_one, gf1);
+  gf_to_fe(fD, D);
+  gf_to_fe(fD2, D2);
+  gf_to_fe(fX, X);
+  gf_to_fe(fY, Y);
+  gf_to_fe(fI, I);
+  fe_copy(base[0], fX);
+  fe_copy(base[1], fY);
+  fe_copy(base[2], fe_one);
+  fe_mul(base[3], fX, fY);
+  odd_multiples(Bi, base);
+  consts_ready = 1;
 }
 
 /* r = a*P + b*B, variable time; a, b < 2^253 */
-sv double_scalarmult(gf r[4], const u8 *a, gf P[4], const u8 *b)
+sv double_scalarmult(fe r[4], const u8 *a, fe Pt[4], const u8 *b)
 {
   signed char as[256], bs[256];
-  gf Pi[8][4], t[4];
+  fe Pi[8][4], t[4];
   int i;
-  if (!Bi_ready) {
-    gf base[4];
-    set25519(base[0], X);
-    set25519(base[1], Y);
-    set25519(base[2], gf1);
-    M(base[3], X, Y);
-    odd_multiples(Bi, base);
-    Bi_ready = 1;
-  }
-  odd_multiples(Pi, P);
+  odd_multiples(Pi, Pt);
   slide(as, a);
   slide(bs, b);
-  set25519(r[0], gf0);
-  set25519(r[1], gf1);
-  set25519(r[2], gf1);
-  set25519(r[3], gf0);
+  fe_copy(r[0], fe_zero);
+  fe_copy(r[1], fe_one);
+  fe_copy(r[2], fe_one);
+  fe_copy(r[3], fe_zero);
   for (i = 255; i >= 0 && !as[i] && !bs[i]; --i);
   for (; i >= 0; --i) {
-    dbl(r);
-    if (as[i] > 0) add(r, Pi[as[i] / 2]);
-    else if (as[i] < 0) { neg(t, Pi[-as[i] / 2]); add(r, t); }
-    if (bs[i] > 0) add(r, Bi[bs[i] / 2]);
-    else if (bs[i] < 0) { neg(t, Bi[-bs[i] / 2]); add(r, t); }
+    point_dbl(r);
+    if (as[i] > 0) point_add(r, Pi[as[i] / 2]);
+    else if (as[i] < 0) { point_neg(t, Pi[-as[i] / 2]); point_add(r, t); }
+    if (bs[i] > 0) point_add(r, Bi[bs[i] / 2]);
+    else if (bs[i] < 0) { point_neg(t, Bi[-bs[i] / 2]); point_add(r, t); }
   }
 }
 
-/* crypto_sign_open with the two ladders + add replaced by one
- * double_scalarmult; every other line is unchanged. */
+/* crypto_sign_open with the ladders/add/pack/unpackneg swapped for the above;
+ * the hashing, reduction and final comparison lines are unchanged. */
 static int yawf_sign_open(u8 *m,u64 *mlen,const u8 *sm,u64 n,const u8 *pk)
 {
   int i;
   u8 t[32],h[64],s[64];
-  gf p[4],q[4];
+  fe p[4],q[4];
 
+  init_consts();
   *mlen = -1;
   if (n < 64) return -1;
 
-  if (unpackneg(q,pk)) return -1;
+  if (point_unpackneg(q,pk)) return -1;
 
   FOR(i,n) m[i] = sm[i];
   FOR(i,32) m[i+32] = pk[i];
@@ -604,7 +879,7 @@ static int yawf_sign_open(u8 *m,u64 *mlen,const u8 *sm,u64 n,const u8 *pk)
   FOR(i,32) s[i + 32] = 0;
   reduce(s);
   double_scalarmult(p,h,q,s);
-  pack(t,p);
+  point_pack(t,p);
 
   n -= 64;
   if (crypto_verify_32(sm, t)) {
@@ -617,14 +892,44 @@ static int yawf_sign_open(u8 *m,u64 *mlen,const u8 *sm,u64 n,const u8 *pk)
   return 0;
 }
 
+/* WhatsApp's Signal-variant check, WASignalSignatures.verifyMsgSignalVariant:
+ *   if (sig[63] & 96) -> invalid
+ *   edPub = pack25519((u - 1) * inv25519(u + 1)), u = unpack25519(montPub)
+ *   edPub[31] = edPub[31] & 127 | sig[63] & 128;  sig[63] &= 127
+ *   -> crypto_sign_open(sig || msg, edPub)
+ * montPub is the 32 bytes after the 0x05 type byte (not checked there either).
+ * sm is modified in place (sig[63] bit 7 cleared). */
+static int yawf_xeddsa_open(u8 *m, u64 *mlen, u8 *sm, u64 n, const u8 *mont)
+{
+  fe u, c, d, inv, y;
+  u8 edpk[32], nb;
+  init_consts();
+  if (n < 64) return -1;
+  nb = sm[63];
+  if (nb & 96) return -1;
+  sm[63] = nb & 127;
+  fe_frombytes(u, mont);
+  fe_sub(c, u, fe_one);
+  fe_add(d, u, fe_one);
+  fe_invert(inv, d);
+  fe_mul(y, c, inv);
+  fe_tobytes(edpk, y);
+  edpk[31] = (edpk[31] & 127) | (nb & 128);
+  return yawf_sign_open(m, mlen, sm, n, edpk);
+}
+
 /* ---- YAWF exports -------------------------------------------------------
- * JS writes the 32-byte public key at yawf_pk() and sig||msg at yawf_sm(),
- * then calls yawf_open(64 + msglen): 0 = valid, -1 = invalid. Messages longer
- * than yawf_max_msg() stay on the JS implementation. */
+ * JS writes the 32-byte key at yawf_pk() and sig||msg at yawf_sm(), then calls
+ * yawf_open(64 + msglen) (Ed25519 key) or yawf_xopen(64 + msglen) (Signal
+ * Montgomery key, see yawf_xeddsa_open): 0 = valid, -1 = invalid. Messages
+ * longer than yawf_max_msg() stay on the JS implementation.
+ * yawf_sha512(n) hashes n bytes at yawf_sm() into the 64 bytes at
+ * yawf_hash_out() (tweetnacl's crypto_hash, for the JS cache keys). */
 #define YAWF_MAX_MSG 4096
 static u8 pk_buf[32];
 static u8 sm_buf[64 + YAWF_MAX_MSG];
 static u8 m_buf[64 + YAWF_MAX_MSG];
+static u8 hash_out[64];
 
 __attribute__((export_name("yawf_pk"))) u8 *yawf_pk(void) { return pk_buf; }
 __attribute__((export_name("yawf_sm"))) u8 *yawf_sm(void) { return sm_buf; }
@@ -634,4 +939,17 @@ __attribute__((export_name("yawf_open"))) int yawf_open(int n)
   u64 mlen;
   if (n < 64 || n > 64 + YAWF_MAX_MSG) return -1;
   return yawf_sign_open(m_buf, &mlen, sm_buf, (u64) n, pk_buf);
+}
+__attribute__((export_name("yawf_xopen"))) int yawf_xopen(int n)
+{
+  u64 mlen;
+  if (n < 64 || n > 64 + YAWF_MAX_MSG) return -1;
+  return yawf_xeddsa_open(m_buf, &mlen, sm_buf, (u64) n, pk_buf);
+}
+__attribute__((export_name("yawf_hash_out"))) u8 *yawf_hash_out(void) { return hash_out; }
+__attribute__((export_name("yawf_sha512"))) int yawf_sha512(int n)
+{
+  if (n < 0 || n > 64 + YAWF_MAX_MSG) return -1;
+  crypto_hash(hash_out, sm_buf, (u64) n);
+  return 0;
 }

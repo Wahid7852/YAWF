@@ -90,10 +90,13 @@ test('length-prefixing: shifting bytes between fields is a different key', () =>
   assert.equal(app.calls.length, 2);
 });
 
-test('failed verifications are never cached', () => {
+test('failures confirmed by WhatsApp code are cached as failures', () => {
   const app = bootSignatures({});
   assert.equal(app.verify('bad', 'msg', 'sig'), false);
   assert.equal(app.verify('bad', 'msg', 'sig'), false);
+  assert.equal(app.calls.length, 1);
+  // a negative entry answers only its own exact input
+  assert.equal(app.verify('pk1', 'msg1', 'sig1'), true);
   assert.equal(app.calls.length, 2);
 });
 
@@ -234,4 +237,125 @@ test('wasm verify is identical to tweetnacl-js 1.0.3', () => {
   }
   assert.equal(mismatches, 0);
   assert.ok(nonCanonicalAccepted > 0);
+});
+
+// ---- WhatsApp's Signal-variant check (verifyMsgSignalVariant) via yawf_xopen
+
+const p25519 = 2n ** 255n - 19n;
+const leToBig = (b) => b.reduceRight((acc, x) => (acc << 8n) | BigInt(x), 0n);
+const bigToLe = (v) => Uint8Array.from({ length: 32 }, (_, i) => Number((v >> BigInt(8 * i)) & 255n));
+const modPow = (b, e) => {
+  let r = 1n;
+  b %= p25519;
+  for (; e > 0n; e >>= 1n, b = (b * b) % p25519) if (e & 1n) r = (r * b) % p25519;
+  return r;
+};
+const modInv = (x) => modPow(((x % p25519) + p25519) % p25519, p25519 - 2n); // 0 -> 0, like inv25519
+
+// WhatsApp's JS (WASignalSignatures f/m/_), written out with BigInt instead of tweetnacl field ops
+function referenceSignalVerify(pk33, msg, sig) {
+  const nb = sig[63];
+  if (nb & 96) return false;
+  const s2 = new Uint8Array(sig);
+  s2[63] = nb & 127;
+  const u = leToBig(pk33.subarray(1, 33)) & (2n ** 255n - 1n); // unpack25519 drops bit 255
+  const y = ((((u - 1n) % p25519) + p25519) % p25519) * modInv(u + 1n) % p25519;
+  const ed = bigToLe(y);
+  ed[31] = (ed[31] & 127) | (nb & 128);
+  return nacl.sign.detached.verify(msg, s2, ed);
+}
+
+// a valid signature in WhatsApp's format: Montgomery key, Edwards sign bit in sig[63]
+function signalSigned(msgLen = 23) {
+  const kp = nacl.sign.keyPair();
+  const msg = new Uint8Array(crypto.randomBytes(msgLen));
+  const sig = nacl.sign.detached(msg, kp.secretKey);
+  sig[63] |= kp.publicKey[31] & 128;
+  const y = leToBig(kp.publicKey) & (2n ** 255n - 1n);
+  const u = ((1n + y) * modInv(1n - y + p25519)) % p25519;
+  const pk = new Uint8Array(33);
+  pk[0] = 5;
+  pk.set(bigToLe(u), 1);
+  return { pk, msg, sig };
+}
+
+async function bootSignal() {
+  const app = boot({}, { wasm: true });
+  const calls = [];
+  app.ctx.window.__d('WASignalSignatures', [], (t, n, r, o, a, i, l) => {
+    l.verifyMsgSignalVariant = (pk, msg, sig) => {
+      calls.push(1);
+      return referenceSignalVerify(pk, msg, sig);
+    };
+  });
+  const verify = (pk, msg, sig) => app.ns.WASignalSignatures.verifyMsgSignalVariant(pk, msg, sig);
+  for (let i = 0; i < 500; i++) {
+    const s = signalSigned();
+    calls.length = 0;
+    verify(s.pk, s.msg, s.sig);
+    if (calls.length === 0) return { verify, calls };
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error('wasm never became ready');
+}
+
+test('Signal-variant: wasm answers valid ones; failures go through WhatsApp code once, then cache', async () => {
+  const { verify, calls } = await bootSignal();
+  const s = signalSigned();
+  calls.length = 0;
+  assert.equal(verify(s.pk, s.msg, s.sig), true);
+  assert.equal(calls.length, 0);
+  const bad = new Uint8Array(s.sig);
+  bad[10] ^= 4;
+  assert.equal(verify(s.pk, s.msg, bad), false);
+  assert.equal(verify(s.pk, s.msg, bad), false);
+  assert.equal(calls.length, 1);
+});
+
+test('Signal-variant wasm (yawf_xopen) is identical to WhatsApp\'s conversion + tweetnacl-js', () => {
+  const e = new WebAssembly.Instance(new WebAssembly.Module(fs.readFileSync(WASM_FILE))).exports;
+  const xopen = (pk33, msg, sig) => {
+    const mem = new Uint8Array(e.memory.buffer);
+    mem.set(pk33.subarray(1, 33), e.yawf_pk());
+    mem.set(sig, e.yawf_sm());
+    mem.set(msg, e.yawf_sm() + 64);
+    return e.yawf_xopen(64 + msg.length) === 0;
+  };
+  let mismatches = 0;
+  let valid = 0;
+  const same = (pk, msg, sig) => {
+    const a = referenceSignalVerify(pk, msg, sig);
+    if (a !== xopen(pk, msg, sig)) mismatches++;
+    if (a) valid++;
+  };
+  const edgeU = [0n, 1n, p25519 - 1n, p25519, p25519 + 1n, 2n ** 255n - 1n, 2n ** 256n - 1n];
+  for (let i = 0; i < 40; i++) {
+    const s = signalSigned(i % 60);
+    same(s.pk, s.msg, s.sig);
+    for (const bit of [5, 6, 7]) {
+      const t = new Uint8Array(s.sig);
+      t[63] ^= 1 << bit; // reserved bits must fail, flipped sign bit must fail
+      same(s.pk, s.msg, t);
+    }
+    const k = new Uint8Array(s.pk);
+    k[1 + crypto.randomInt(32)] ^= 1 << crypto.randomInt(8);
+    same(k, s.msg, s.sig);
+    const edge = new Uint8Array(33);
+    edge.set(bigToLe(edgeU[i % edgeU.length] & (2n ** 256n - 1n)), 1);
+    same(edge, s.msg, s.sig);
+  }
+  assert.equal(mismatches, 0);
+  assert.equal(valid, 40);
+});
+
+test('wasm SHA-512 (cache keys) matches node crypto', () => {
+  const e = new WebAssembly.Instance(new WebAssembly.Module(fs.readFileSync(WASM_FILE))).exports;
+  for (const len of [0, 1, 111, 112, 127, 128, 129, 133, 255, 256, 1000, 4160]) {
+    const buf = crypto.randomBytes(len);
+    new Uint8Array(e.memory.buffer).set(buf, e.yawf_sm());
+    assert.equal(e.yawf_sha512(len), 0);
+    const got = Buffer.from(new Uint8Array(e.memory.buffer, e.yawf_hash_out(), 64));
+    assert.equal(got.toString('hex'), crypto.createHash('sha512').update(buf).digest('hex'), `len ${len}`);
+  }
+  assert.equal(e.yawf_sha512(4161), -1);
 });
