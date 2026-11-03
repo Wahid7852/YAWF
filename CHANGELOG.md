@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+* Windows builds: NSIS installer and portable exe, built in CI on a Windows runner
+* Screenshot-to-chat on Windows via the Snipping Tool
+* Screen share in calls (`getDisplayMedia` handler, PipeWire portal on Wayland)
+
+### Fixed
+* Idle reload no longer fires while a call or audio is playing
+* Custom CSS path and user agent follow the OS instead of assuming Linux
+
 ## 3.1.0
 
 ### Changed

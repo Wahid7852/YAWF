@@ -2,7 +2,7 @@
   "name": "yawf",
   "productName": "YAWF",
   "version": "3.1.0",
-  "description": "Yet Another WhatsApp Fork - unofficial WhatsApp desktop client (Electron edition)",
+  "description": "Yet Another WhatsApp Fork - unofficial WhatsApp desktop client for Linux and Windows (Electron edition)",
   "main": "src/main.js",
   "homepage": "https://github.com/Wahid7852/YAWF",
   "author": {
@@ -17,7 +17,8 @@
     "test": "node --test",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "dist:linux": "electron-builder --linux deb AppImage snap rpm pacman"
+    "dist:linux": "electron-builder --linux deb AppImage snap rpm pacman",
+    "dist:win": "electron-builder --win nsis portable --x64"
   },
   "dependencies": {
     "express": "^5.2.1"

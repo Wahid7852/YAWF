@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
 
     steps:
       - name: Checkout
@@ -43,6 +45,7 @@ jobs:
         id: set-version
         run: |
           version=$(node -p "require('./package.json').version")
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "RELEASE_VERSION=${version}" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=v${version}" >> "$GITHUB_ENV"
           # CHANGELOG.md entries are keyed by the base version (e.g. "## 3.0.0"),
@@ -83,3 +86,37 @@ jobs:
             dist/*.AppImage
             dist/*.rpm
             dist/*.pacman
+
+  # Windows can't be built on the ubuntu job (NSIS + rcedit want a real Windows
+  # runner). Runs after `release` so the release and its changelog body exist,
+  # then attaches the installer and portable exe to the same tag.
+  windows:
+    needs: release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build Windows installer and portable exe
+        run: npx electron-builder --win nsis portable --x64 --publish never
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.release.outputs.version }}
+          files: |
+            dist/*.exe

@@ -1,7 +1,7 @@
 # YAWF
 
 **Y**et **A**nother **W**hatsApp **F**ork, an unofficial WhatsApp desktop client for
-Linux, built on Electron. Originally a C++/gtkmm/WebKitGTK app (a fork of
+Linux and Windows, built on Electron. Originally a C++/gtkmm/WebKitGTK app (a fork of
 [xeco23/WasIstLos](https://github.com/xeco23/WasIstLos)), rewritten from scratch
 starting at version 3.0.0.
 
@@ -40,7 +40,7 @@ multiple accounts at once.
 - Zoom, fullscreen, spellcheck (native Chromium)
 - Open a chat directly by phone number, in-app dialog or `whatsapp:` deep link
 - CLI remote control: `yawf --show / --hide / --refresh / --quit`
-- Custom CSS at `~/.config/yawf/user.css`
+- Custom CSS at `~/.config/yawf/user.css` (Linux) or `%APPDATA%\yawf\user.css` (Windows)
 - UI in 16 languages (matches the OS locale automatically), see `src/locales/`
 
 **Reliability**
@@ -72,6 +72,20 @@ multiple accounts at once.
 
 ## Install
 
+### Windows
+
+Download from the [Releases](https://github.com/Wahid7852/YAWF/releases) page:
+
+- `YAWF-Setup-<version>.exe`: installer, per-user, no admin needed
+- `YAWF-<version>-portable.exe`: single file, no install
+
+The builds aren't code-signed yet, so SmartScreen will say "Windows protected
+your PC" on first run. Click **More info**, then **Run anyway**. Screenshot-to-chat
+(`Ctrl+Shift+S`) opens the Windows Snipping Tool, calls and screen share use
+the stock WhatsApp Web ones.
+
+### Linux
+
 Grab a `.deb`, `.AppImage`, `.rpm`, or `.pacman` from the
 [Releases](https://github.com/Wahid7852/YAWF/releases) page, or:
 
@@ -87,8 +101,10 @@ npm install
 npm start
 ```
 
-`npm run dist:linux` builds `.deb`/`.AppImage`/`.rpm`/`.pacman` via
-electron-builder (`electron-builder.yml`). Snap isn't in that list, it needs
+`npm run dist:linux` builds `.deb`/`.AppImage`/`.rpm`/`.pacman` and
+`npm run dist:win` builds the NSIS installer and portable exe, both via
+electron-builder (`electron-builder.yml`). `dist:win` also works from Linux
+(needs `wine`). Snap isn't in that list, it needs
 the same CI-only `snapcore/action-build` wrapper as everything else does for
 snap, plain electron-builder doesn't build it reliably here.
 
@@ -123,6 +139,10 @@ login screen, summing RSS across every process each app spawned:
 
 ## Known gaps
 
+- Windows builds are cross-built and CI-tested (lint, unit tests) but haven't
+  been through a full manual pass on a real Windows machine yet: calls, tray,
+  notifications and screenshot-to-chat are the things to check
+- No macOS build
 - `.rpm` build is untested locally (no `rpmbuild` available in dev), uses the
   same pipeline as the verified `.deb`/`.pacman` builds
 - Translations (16 languages, see `src/locales/`) are AI-translated and

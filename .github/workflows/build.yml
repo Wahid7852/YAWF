@@ -8,7 +8,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -23,6 +27,7 @@ jobs:
         run: npm ci
 
       - name: Syntax check
+        shell: bash
         run: |
           for f in $(find src -name "*.js"); do node --check "$f"; done
 

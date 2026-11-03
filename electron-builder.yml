@@ -15,7 +15,7 @@ files:
 linux:
   icon: build/icons
   category: Network
-  synopsis: An unofficial WhatsApp desktop application for Linux
+  synopsis: An unofficial WhatsApp desktop application
   description: >-
     Wraps WhatsApp Web with crash auto-recovery, idle heap reset, multi-profile
     support, clipboard image paste, screenshot-to-chat, and markdown shortcuts.
@@ -36,6 +36,27 @@ linux:
       arch: [x64]
     - target: pacman
       arch: [x64]
+
+win:
+  icon: build/icons/256x256.png
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
+
+protocols:
+  name: WhatsApp
+  schemes: [whatsapp]
 
 deb:
   depends:

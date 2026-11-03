@@ -15,7 +15,7 @@ Read more about [Pull Requests](https://help.github.com/en/github/collaborating-
 ### Development
 
 `npm install && npm start` runs it from source. No build step for the main
-process, `src/**` is plain CommonJS. `npm run dist:linux` produces installable
+process, `src/**` is plain CommonJS. `npm run dist:linux` / `npm run dist:win` produce installable
 packages via electron-builder, see `electron-builder.yml`.
 
 ### Testing notes (2026-07-18, rewrite from C++ to Electron)

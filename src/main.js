@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, shell, clipboard, nativeImage, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, clipboard, nativeImage, Menu, desktopCapturer } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -25,7 +25,8 @@ const { IPC_CALL, IPC_RESULT, IPC_EVENT, ALLOWED_PUSH_EVENTS } = require('./brid
 
 const WHATSAPP_URL = 'https://web.whatsapp.com';
 const ICON_DIR = path.join(__dirname, '..', 'build', 'icons');
-const USER_CSS_PATH = path.join(os.homedir(), '.config', 'yawf', 'user.css');
+// appData is ~/.config on Linux, %APPDATA% on Windows, ~/Library/Application Support on macOS.
+const USER_CSS_PATH = path.join(app.getPath('appData'), 'yawf', 'user.css');
 const REMOTE_FLAGS = ['--show', '--hide', '--refresh', '--quit'];
 
 let PROFILE_NAME = 'default';
@@ -37,6 +38,9 @@ try {
   app.quit();
   process.exit(1);
 }
+
+// Windows: without this, notifications and the taskbar show "electron.app.YAWF" instead of YAWF.
+if (process.platform === 'win32') app.setAppUserModelId('io.github.wahid7852.YAWF');
 
 const gotLock = app.requestSingleInstanceLock({ profile: PROFILE_NAME });
 if (!gotLock) {
@@ -140,7 +144,11 @@ let bridgeClient = null;
 let bridgeSessionState = null;
 
 function chromeUserAgent() {
-  return `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
+  const os_ = {
+    win32: 'Windows NT 10.0; Win64; x64',
+    darwin: 'Macintosh; Intel Mac OS X 10_15_7',
+  }[process.platform] ?? 'X11; Linux x86_64';
+  return `Mozilla/5.0 (${os_}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
 }
 
 function extractPhoneFromDeepLink(raw) {
@@ -275,6 +283,8 @@ function startIdleWatch() {
     const hours = settings.get('idleReloadHours');
     if (!hours || hours <= 0) return;
     const idleMs = Date.now() - lastActivity;
+    // audible = call or voice note playing; a reload would drop it.
+    if (mainWindow?.webContents.isCurrentlyAudible()) return;
     if (idleMs >= hours * 3600 * 1000 && rendererMemoryMb() >= IDLE_RELOAD_MIN_MB) {
       lastActivity = Date.now();
       scheduleReload(`idle for ${hours}h, resetting JS heap`);
@@ -344,6 +354,15 @@ function createMainWindow() {
 
   win.webContents.session.setPermissionRequestHandler((_wc, permission, callback) => {
     callback(['notifications', 'media', 'clipboard-sanitized-write'].includes(permission));
+  });
+
+  // Screen share in calls: Electron rejects getDisplayMedia without a handler.
+  // On Wayland desktopCapturer goes through the PipeWire portal (system picker).
+  win.webContents.session.setDisplayMediaRequestHandler((_req, callback) => {
+    desktopCapturer
+      .getSources({ types: ['screen', 'window'] })
+      .then((s) => callback(s[0] ? { video: s[0] } : {}))
+      .catch(() => callback({}));
   });
 
   win.on('close', (e) => {
@@ -521,7 +540,7 @@ function registerIpc() {
     return img.isEmpty() ? null : img.toDataURL();
   });
   handleTrusted('screenshot:capture', async () => {
-    const buf = await captureScreenshot().catch(() => null);
+    const buf = await captureScreenshot({ clipboard }).catch(() => null);
     if (!buf) return null;
     return nativeImage.createFromBuffer(buf).toDataURL();
   });

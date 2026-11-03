@@ -27,6 +27,8 @@ const TOOLS = [
 ];
 
 function detectTool() {
+  // Windows: Snipping Tool via the ms-screenclip: URI, result lands on the clipboard.
+  if (process.platform === 'win32') return 'ms-screenclip';
   if (commandExists('grim') && commandExists('slurp')) return 'grim-slurp';
   return TOOLS.find((t) => commandExists(t.bin))?.bin ?? null;
 }
@@ -56,10 +58,28 @@ function runTool(tool, outFile) {
   });
 }
 
+// Snipping Tool has no "save to file" switch, it only copies to the clipboard.
+// So: remember what's on the clipboard now, open the overlay, wait for a new image.
+async function runScreenClip(clipboard, timeoutMs = 60000) {
+  const before = clipboard.readImage().toPNG();
+  spawn('explorer.exe', ['ms-screenclip:'], { detached: true, stdio: 'ignore' }).unref();
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 300));
+    const img = clipboard.readImage();
+    if (!img.isEmpty()) {
+      const png = img.toPNG();
+      if (!png.equals(before)) return png;
+    }
+  }
+  throw new Error('selection cancelled');
+}
+
 /** Runs the desktop's region-capture tool and returns a PNG Buffer, or null if none is installed. */
-async function captureScreenshot() {
+async function captureScreenshot({ clipboard } = {}) {
   const tool = detectTool();
   if (!tool) return null;
+  if (tool === 'ms-screenclip') return runScreenClip(clipboard);
 
   const outFile = path.join(os.tmpdir(), `yawf-screenshot-${Date.now()}.png`);
   try {

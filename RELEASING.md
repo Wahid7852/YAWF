@@ -12,7 +12,10 @@ YAWF's version lives in `package.json`, all package metadata derives from it.
    ```
    The `Release` workflow (`.github/workflows/release.yml`) builds the `.deb`,
    `.AppImage`, `.rpm`, and `.pacman` packages, tags `vX.Y.Z`, and creates the
-   GitHub Release with a generated changelog and the artifacts attached.
+   GitHub Release with a generated changelog and the artifacts attached. A
+   second job on `windows-latest` then adds the NSIS installer and portable
+   `.exe` to the same release. Rename `## Unreleased` in the changelog to the
+   version first, the release notes are extracted by that heading.
    Snap isn't built by this workflow, see the note in `README.md`.
 
 ## Per-channel publishing
@@ -37,5 +40,6 @@ in `README.md`.
 ```bash
 npm ci
 npm run dist:linux
+npm run dist:win   # needs wine on Linux; CI builds this on windows-latest
 desktop-file-validate dist/linux-unpacked/*.desktop 2>/dev/null || true
 ```
