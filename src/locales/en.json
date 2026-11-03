@@ -19,7 +19,7 @@
   "prefs.startMinimized": "Start minimized to tray",
   "prefs.autostart": "Launch at login",
   "prefs.idleReload.label": "Idle heap reset (hours)",
-  "prefs.idleReload.hint": "Reload WhatsApp Web after this long with no input. 0 disables it.",
+  "prefs.idleReload.hint": "Reload WhatsApp Web after this long with no input, only if it has grown past 1.5GB. 0 disables it.",
   "prefs.apiEnabled.label": "Enable automation API",
   "prefs.apiEnabled.hint": "Manage keys, webhooks and activity from the tray's API Dashboard",
   "prefs.apiPort.label": "Automation API port",

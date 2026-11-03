@@ -2,9 +2,121 @@
 
 // Runs in the isolated world of the WhatsApp Web page. No contextBridge exposure
 // on purpose: everything here operates on the real DOM directly, and WhatsApp's
-// own scripts never need to see or call into it.
+// own scripts never need to see or call into it. The one exception is
+// installSigCache below, pushed one-way into the main world (nothing is
+// exposed back).
 
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, contextBridge } = require('electron');
+
+// sigcache:begin
+// Cold-start CPU fix. Profiling a boot showed ~115s of single-core CPU inside
+// WASignalSignatures.verifyMsgSignalVariant: WhatsApp re-verifies the ADV
+// key-index-list signature of every contact and group participant (~22k on a
+// real account, 3.3ms each in pure-JS tweetnacl), then does a second pass over
+// the same set. Verification is a pure function of (pubkey, msg, sig), so a
+// result can be remembered.
+//
+// Safety: only `true` results are cached, keyed by SHA-512 over the
+// length-prefixed (pubkey, sig, msg) truncated to 128 bits, so no other input
+// can hit an entry. Anything that throws falls back to WhatsApp's own verify.
+// The cache lives in web.whatsapp.com's localStorage; whoever can write that
+// can already rewrite WhatsApp's identity store, so it grants nothing new.
+//
+// Runs in the page's MAIN world via contextBridge.executeInMainWorld, before any
+// WhatsApp script. It is serialized to source, so it must stay self-contained.
+// ponytail: FIFO eviction at maxEntries, LRU if accounts ever exceed the cap.
+function installSigCache(maxEntries) {
+  if (location.hostname !== 'web.whatsapp.com') return;
+  const STORAGE_KEY = 'yawf:sigcache:v1';
+  let cache = null;
+  let saveTimer = null;
+
+  function load() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      cache = new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      cache = new Set();
+    }
+  }
+  function save() {
+    saveTimer = null;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(cache)));
+    } catch {
+      // quota/disabled storage: the cache just stays in-memory for this session
+    }
+  }
+  function keyOf(pk, msg, sig) {
+    const parts = [pk, sig, msg].map((p) => (p instanceof Uint8Array ? p : new Uint8Array(p)));
+    const buf = new Uint8Array(parts.reduce((n, p) => n + 4 + p.length, 0));
+    const view = new DataView(buf.buffer);
+    let off = 0;
+    for (const p of parts) {
+      view.setUint32(off, p.length);
+      buf.set(p, off + 4);
+      off += 4 + p.length;
+    }
+    const digest = window.require('WACryptoPrimitives').hash(buf); // SHA-512
+    return btoa(String.fromCharCode.apply(null, digest.subarray(0, 16)));
+  }
+  function patch(ns) {
+    const verify = ns.verifyMsgSignalVariant;
+    if (typeof verify !== 'function') return;
+    ns.verifyMsgSignalVariant = function (pk, msg, sig) {
+      let key = null;
+      try {
+        if (!cache) load();
+        key = keyOf(pk, msg, sig);
+        if (cache.has(key)) return true;
+      } catch {
+        // hashing/storage failed: key stays null, fall through to the real verify
+      }
+      const ok = verify.apply(this, arguments);
+      if (ok === true && key !== null) {
+        cache.add(key);
+        if (cache.size > maxEntries) cache.delete(cache.values().next().value);
+        if (!saveTimer) saveTimer = setTimeout(save, 5000);
+      }
+      return ok;
+    };
+  }
+  // WhatsApp's module loader assigns window.__d (a stub first, then the real
+  // one). Wrap every assignment so the WASignalSignatures factory gets patched
+  // right after it runs; args[6] is that module's exports namespace.
+  function wrapDefine(define) {
+    const wrapped = function (name, deps, factory, ...rest) {
+      if (name === 'WASignalSignatures' && typeof factory === 'function') {
+        const original = factory;
+        factory = function (...args) {
+          const result = original.apply(this, args);
+          try {
+            patch(args[6]);
+          } catch {
+            // module shape changed: leave WhatsApp's own function in place
+          }
+          return result;
+        };
+      }
+      return define.call(this, name, deps, factory, ...rest);
+    };
+    wrapped.__yawfSigCache = true;
+    return wrapped;
+  }
+  let define;
+  Object.defineProperty(window, '__d', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return define;
+    },
+    set(v) {
+      define = typeof v === 'function' && !v.__yawfSigCache ? wrapDefine(v) : v;
+    },
+  });
+}
+// sigcache:end
+contextBridge.executeInMainWorld?.({ func: installSigCache, args: [50000] });
 
 // Duplicated from src/bridge/protocol.js rather than require()'d: this preload
 // runs with sandbox:true, and Electron's sandboxed-preload loader only permits
@@ -297,7 +409,12 @@ document.addEventListener(EVT_PUSH, (e) => {
 // after two consecutive hits (10s) to avoid false positives on transient renders.
 let errorStrikes = 0;
 setInterval(() => {
-  const text = document.body ? document.body.innerText : '';
+  // innerText forces a full layout; skip it while the chat list is up (healthy app).
+  if (!document.body || document.querySelector('#pane-side')) {
+    errorStrikes = 0;
+    return;
+  }
+  const text = document.body.innerText;
   const looksErrored = text.length < 4000 && /something went wrong|trouble loading|click to reload/i.test(text);
   if (looksErrored) {
     errorStrikes += 1;

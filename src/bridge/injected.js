@@ -199,9 +199,13 @@ if (!window.__yawfBridgeObserving) {
 
   let yawfReattachTimer = null;
   function yawfOnBodyMutation() {
-    yawfMaybePushStatus();
+    // Debounced: during initial sync WhatsApp mutates the DOM thousands of times a
+    // second, and both calls below run full-document selector scans.
     clearTimeout(yawfReattachTimer);
-    yawfReattachTimer = setTimeout(yawfMaybeReattachMessageWatcher, 200);
+    yawfReattachTimer = setTimeout(() => {
+      yawfMaybePushStatus();
+      yawfMaybeReattachMessageWatcher();
+    }, 300);
   }
 
   new MutationObserver(yawfOnBodyMutation).observe(document.body, { childList: true, subtree: true });

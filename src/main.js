@@ -16,7 +16,6 @@ const { createResourceMonitor } = require('./windows/resourceMonitor');
 const { createApiDashboard } = require('./windows/apiDashboardWindow');
 const { captureScreenshot } = require('./screenshot');
 const { createI18n } = require('./i18n');
-const { createApiServer } = require('./api/server');
 const { ApiKeyStore } = require('./api/apiKeyStore');
 const { AuditLog } = require('./api/auditLog');
 const { WebhookStore } = require('./api/webhooks/webhookStore');
@@ -258,13 +257,25 @@ function updateBadgeFromTitle(title) {
   if (process.platform === 'linux') app.setBadgeCount(count);
 }
 
+// A reload forces WhatsApp Web through a full cold boot + re-sync, the single
+// most CPU-expensive thing the app does. Only pay that when the heap has
+// actually grown, not on every idle stretch.
+// ponytail: fixed threshold, make it a setting if 1.5GB is wrong for someone.
+const IDLE_RELOAD_MIN_MB = 1536;
+function rendererMemoryMb() {
+  if (!mainWindow || mainWindow.isDestroyed()) return 0;
+  const pid = mainWindow.webContents.getOSProcessId();
+  const m = app.getAppMetrics().find((p) => p.pid === pid);
+  return m ? m.memory.workingSetSize / 1024 : 0;
+}
+
 function startIdleWatch() {
   clearInterval(idleCheckInterval);
   idleCheckInterval = setInterval(() => {
     const hours = settings.get('idleReloadHours');
     if (!hours || hours <= 0) return;
     const idleMs = Date.now() - lastActivity;
-    if (idleMs >= hours * 3600 * 1000) {
+    if (idleMs >= hours * 3600 * 1000 && rendererMemoryMb() >= IDLE_RELOAD_MIN_MB) {
       lastActivity = Date.now();
       scheduleReload(`idle for ${hours}h, resetting JS heap`);
     }
@@ -348,6 +359,12 @@ function createMainWindow() {
     injectUserCss(win);
     injectBridge(win);
   });
+  // Electron has no beforeunload dialog: if WhatsApp Web's handler objects, the
+  // unload is silently cancelled and app.quit() just doesn't happen. Seen once
+  // with --quit. Never let the page veto a quit the user asked for.
+  win.webContents.on('will-prevent-unload', (e) => {
+    if (quitting) e.preventDefault();
+  });
   win.webContents.on('render-process-gone', (_e, details) => {
     scheduleReload(`renderer gone: ${details.reason}`);
   });
@@ -407,6 +424,8 @@ async function stopApiServer() {
 async function startApiServerIfEnabled() {
   await stopApiServer();
   if (!settings.get('apiEnabled')) return;
+  // Lazy: keeps express + its dep tree off the startup path when the API is off (the default).
+  const { createApiServer } = require('./api/server');
   const server = createApiServer({
     settings,
     apiKeyStore,

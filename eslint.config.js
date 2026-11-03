@@ -33,6 +33,9 @@ const browserGlobals = {
   DataTransfer: 'readonly',
   File: 'readonly',
   MutationObserver: 'readonly',
+  location: 'readonly',
+  localStorage: 'readonly',
+  btoa: 'readonly',
   Notification: 'readonly',
   WebSocket: 'readonly',
 };
