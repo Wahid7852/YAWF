@@ -7,14 +7,18 @@ const path = require('node:path');
 
 function commandExists(cmd) {
   const dirs = (process.env.PATH || '').split(path.delimiter);
-  return dirs.some((dir) => {
-    try {
-      fs.accessSync(path.join(dir, cmd), fs.constants.X_OK);
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  // Windows resolves `node` to node.exe etc. via PATHEXT.
+  const exts = process.platform === 'win32' ? ['', ...(process.env.PATHEXT || '.EXE').split(';')] : [''];
+  return dirs.some((dir) =>
+    exts.some((ext) => {
+      try {
+        fs.accessSync(path.join(dir, cmd + ext), fs.constants.X_OK);
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+  );
 }
 
 // Ordered by how well each tool does *region* capture (matches YAWF C++ detection order).

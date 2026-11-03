@@ -345,7 +345,10 @@ test('Signal-variant wasm (yawf_xopen) is identical to WhatsApp\'s conversion + 
     same(edge, s.msg, s.sig);
   }
   assert.equal(mismatches, 0);
-  assert.equal(valid, 40);
+  // The 40 untouched signatures must verify. Flipping the top bit of the Montgomery
+  // u-coordinate is ignored by the conversion, so a random key flip can legitimately
+  // verify too (~14% of runs); mismatches === 0 is what pins wasm to the reference.
+  assert.ok(valid >= 40);
 });
 
 test('wasm SHA-512 (cache keys) matches node crypto', () => {
