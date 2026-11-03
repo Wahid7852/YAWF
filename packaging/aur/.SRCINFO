@@ -1,6 +1,6 @@
 pkgbase = yawf-bin
 	pkgdesc = An unofficial WhatsApp desktop client for Linux (YAWF)
-	pkgver = 3.0.0
+	pkgver = 3.1.0
 	pkgrel = 1
 	url = https://github.com/Wahid7852/YAWF
 	arch = x86_64
@@ -13,12 +13,12 @@ pkgbase = yawf-bin
 	depends = libsecret
 	depends = xdg-utils
 	provides = yawf
-	noextract = yawf-bin-3.0.0.AppImage
-	source = yawf-bin-3.0.0.AppImage::https://github.com/Wahid7852/YAWF/releases/download/v3.0.0/YAWF-3.0.0-x86_64.AppImage
+	noextract = yawf-bin-3.1.0.AppImage
+	source = yawf-bin-3.1.0.AppImage::https://github.com/Wahid7852/YAWF/releases/download/v3.1.0/YAWF-3.1.0.AppImage
 	source = yawf.desktop
 	source = yawf.png
-	sha256sums = SKIP
-	sha256sums = SKIP
-	sha256sums = SKIP
+	sha256sums = d5b400d3d70d26d84cf62e6031ec5ce1a83d22fcbf907298f27545e33d44c28b
+	sha256sums = f43371c57225df77cc9ac8bb08c480773a51f854f1b868ac9fb3ed624301e510
+	sha256sums = ad264723000f17740614596286d575c9a2c519472b1c2609588f9dd8dfa187a7
 
 pkgname = yawf-bin
