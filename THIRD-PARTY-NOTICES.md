@@ -12,6 +12,15 @@ Copyright (c) 2014-2015 Douglas Christopher Wilson
 
 Licensed under the MIT License.
 
+## TweetNaCl
+
+`wasm/ed25519_verify.c` (compiled to WebAssembly and embedded in `src/preload.js`)
+contains the Ed25519 verification subset of [TweetNaCl](https://tweetnacl.cr.yp.to/)
+20140427, copied verbatim.
+
+By Daniel J. Bernstein, Bernard van Gastel, Wesley Janssen, Tanja Lange, Peter
+Schwabe, and Sjaak Smetsers. Public domain.
+
 ## whatsapp-web.js (adapted)
 
 `src/bridge/injected.js` adapts the WhatsApp Web internal-Store discovery technique

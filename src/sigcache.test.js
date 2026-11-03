@@ -1,19 +1,22 @@
 'use strict';
 
-// installSigCache lives inside preload.js (sandboxed preloads can't require
-// local files), so pull its source out between the markers and run it in a vm
-// against a fake WhatsApp module loader.
+// installVerifySpeedups lives inside preload.js (sandboxed preloads can't
+// require local files), so pull its source out between the markers and run it
+// in a vm against a fake WhatsApp module loader.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
+const nacl = require('tweetnacl'); // 1.0.3, the exact build WhatsApp Web ships
 
 const src = fs.readFileSync(path.join(__dirname, 'preload.js'), 'utf8');
-const body = src.slice(src.indexOf('// sigcache:begin'), src.indexOf('// sigcache:end'));
+const body = src.slice(src.indexOf('// verify-hooks:begin'), src.indexOf('// verify-hooks:end'));
+const WASM_B64 = src.match(/^const ED25519_WASM = '([^']*)';$/m)[1];
+const WASM_FILE = path.join(__dirname, '..', 'wasm', 'ed25519_verify.wasm');
 
-function boot(storage) {
+function boot(storage, { wasm = false } = {}) {
   const timers = [];
   const ctx = {
     location: { hostname: 'web.whatsapp.com' },
@@ -22,9 +25,11 @@ function boot(storage) {
       setItem: (k, v) => (storage[k] = String(v)),
     },
     btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
+    atob: (s) => Buffer.from(s, 'base64').toString('binary'),
     setTimeout: (fn) => timers.push(fn),
+    // same realm as the test's arrays, like WhatsApp's own arrays in the page
     Uint8Array,
-    DataView,
+    WebAssembly,
   };
   ctx.window = ctx;
   ctx.window.require = (name) => {
@@ -32,38 +37,45 @@ function boot(storage) {
     return { hash: (buf) => new Uint8Array(crypto.createHash('sha512').update(buf).digest()) };
   };
   vm.createContext(ctx);
-  vm.runInContext(`${body}; installSigCache(3);`, ctx);
+  vm.runInContext(`${body}; installVerifySpeedups(3, ${JSON.stringify(wasm ? WASM_B64 : '')});`, ctx);
 
   // WhatsApp's loader: stub assigned first, then the real define.
-  const calls = [];
-  const valid = new Set(['pk1|msg1|sig1', 'pk1|msg2|sig2', 'pk2|msg|sig', 'pk3|msg|sig', 'pk4|msg|sig']);
+  const ns = {};
   ctx.window.__d = function stub() {};
   ctx.window.__d = function realDefine(name, deps, factory) {
-    const ns = {};
-    factory(null, null, null, null, null, null, ns);
-    ctx.ns = ns;
+    ns[name] = {};
+    factory(null, null, null, null, null, null, ns[name]);
   };
-  ctx.window.__d('WASignalSignatures', [], (t, n, r, o, a, i, l) => {
+  return { ctx, ns, flush: () => timers.splice(0).forEach((fn) => fn()) };
+}
+
+// ---- cache layer (WASignalSignatures.verifyMsgSignalVariant)
+
+function bootSignatures(storage) {
+  const app = boot(storage);
+  const calls = [];
+  const valid = new Set(['pk1|msg1|sig1', 'pk1|msg2|sig2', 'pk2|msg|sig', 'pk3|msg|sig', 'pk4|msg|sig']);
+  app.ctx.window.__d('WASignalSignatures', [], (t, n, r, o, a, i, l) => {
     l.verifyMsgSignalVariant = (pk, msg, sig) => {
       const k = [pk, msg, sig].map((b) => Buffer.from(b).toString()).join('|');
       calls.push(k);
       return valid.has(k);
     };
   });
-  const verify = (pk, msg, sig) => ctx.ns.verifyMsgSignalVariant(...[pk, msg, sig].map((s) => Buffer.from(s)));
-  const flush = () => timers.splice(0).forEach((fn) => fn());
-  return { verify, calls, flush };
+  const verify = (pk, msg, sig) =>
+    app.ns.WASignalSignatures.verifyMsgSignalVariant(...[pk, msg, sig].map((s) => Buffer.from(s)));
+  return { verify, calls, flush: app.flush };
 }
 
 test('valid signature is verified once, then served from cache', () => {
-  const app = boot({});
+  const app = bootSignatures({});
   assert.equal(app.verify('pk1', 'msg1', 'sig1'), true);
   assert.equal(app.verify('pk1', 'msg1', 'sig1'), true);
   assert.equal(app.calls.length, 1);
 });
 
 test('any differing input misses the cache and is really verified', () => {
-  const app = boot({});
+  const app = bootSignatures({});
   app.verify('pk1', 'msg1', 'sig1');
   assert.equal(app.verify('pk1', 'msgX', 'sig1'), false); // same key+sig, other message
   assert.equal(app.verify('pk1', 'msg1', 'sigX'), false);
@@ -72,14 +84,14 @@ test('any differing input misses the cache and is really verified', () => {
 });
 
 test('length-prefixing: shifting bytes between fields is a different key', () => {
-  const app = boot({});
+  const app = bootSignatures({});
   app.verify('pk1', 'msg1', 'sig1');
   app.verify('pk', '1msg1', 'sig1');
   assert.equal(app.calls.length, 2);
 });
 
 test('failed verifications are never cached', () => {
-  const app = boot({});
+  const app = bootSignatures({});
   assert.equal(app.verify('bad', 'msg', 'sig'), false);
   assert.equal(app.verify('bad', 'msg', 'sig'), false);
   assert.equal(app.calls.length, 2);
@@ -87,16 +99,16 @@ test('failed verifications are never cached', () => {
 
 test('cache persists across boots via localStorage', () => {
   const storage = {};
-  const first = boot(storage);
+  const first = bootSignatures(storage);
   first.verify('pk1', 'msg1', 'sig1');
   first.flush();
-  const second = boot(storage);
+  const second = bootSignatures(storage);
   assert.equal(second.verify('pk1', 'msg1', 'sig1'), true);
   assert.equal(second.calls.length, 0);
 });
 
 test('cache is capped, oldest entry evicted first', () => {
-  const app = boot({});
+  const app = bootSignatures({});
   for (const pk of ['pk1', 'pk2', 'pk3', 'pk4']) app.verify(pk, pk === 'pk1' ? 'msg1' : 'msg', pk === 'pk1' ? 'sig1' : 'sig');
   app.calls.length = 0;
   app.verify('pk4', 'msg', 'sig');
@@ -105,7 +117,121 @@ test('cache is capped, oldest entry evicted first', () => {
 });
 
 test('corrupt stored cache is ignored, not fatal', () => {
-  const app = boot({ 'yawf:sigcache:v1': '{nope' });
+  const app = bootSignatures({ 'yawf:sigcache:v1': '{nope' });
   assert.equal(app.verify('pk1', 'msg1', 'sig1'), true);
   assert.equal(app.calls.length, 1);
+});
+
+// ---- wasm layer (WACryptoPrimitives.signDetachedVerify)
+
+const L = 2n ** 252n + 27742317777372353535851937790883648493n;
+
+function signed(msgLen = 23) {
+  const kp = nacl.sign.keyPair();
+  const msg = new Uint8Array(crypto.randomBytes(msgLen));
+  return { msg, sig: nacl.sign.detached(msg, kp.secretKey), pk: kp.publicKey };
+}
+
+async function bootPrimitives() {
+  const app = boot({}, { wasm: true });
+  const jsCalls = [];
+  app.ctx.window.__d('WACryptoPrimitives', [], (t, n, r, o, a, i, l) => {
+    l.signDetachedVerify = (msg, sig, pk) => {
+      jsCalls.push(1);
+      return nacl.sign.detached.verify(msg, sig, pk);
+    };
+  });
+  const verify = (msg, sig, pk) => app.ns.WACryptoPrimitives.signDetachedVerify(msg, sig, pk);
+  // instantiation is async; wait until a valid signature stops reaching JS
+  const probe = signed();
+  for (let i = 0; i < 500; i++) {
+    jsCalls.length = 0;
+    verify(probe.msg, probe.sig, probe.pk);
+    if (jsCalls.length === 0) return { verify, jsCalls };
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error('wasm never became ready');
+}
+
+test('embedded wasm matches wasm/ed25519_verify.wasm (run wasm/build.sh)', () => {
+  assert.equal(WASM_B64, fs.readFileSync(WASM_FILE).toString('base64'));
+});
+
+test('wasm answers valid signatures without touching JS; invalid ones are re-checked in JS', async () => {
+  const { verify, jsCalls } = await bootPrimitives();
+  const s = signed();
+  jsCalls.length = 0;
+  assert.equal(verify(s.msg, s.sig, s.pk), true);
+  assert.equal(jsCalls.length, 0);
+  const bad = new Uint8Array(s.sig);
+  bad[5] ^= 1;
+  assert.equal(verify(s.msg, bad, s.pk), false);
+  assert.equal(jsCalls.length, 1);
+});
+
+test('non-fast-path inputs go to JS and keep its errors', async () => {
+  const { verify, jsCalls } = await bootPrimitives();
+  const s = signed();
+  jsCalls.length = 0;
+  assert.throws(() => verify(s.msg, s.sig.subarray(0, 63), s.pk), /bad signature size/);
+  assert.throws(() => verify([1, 2], s.sig, s.pk), /unexpected type/);
+  assert.equal(verify(new Uint8Array(5000), s.sig, s.pk), false); // over yawf_max_msg
+  assert.equal(jsCalls.length, 3);
+});
+
+// Differential: raw wasm vs tweetnacl-js on valid, mutated, non-canonical and
+// edge-case inputs. They must agree on every single one.
+test('wasm verify is identical to tweetnacl-js 1.0.3', () => {
+  const e = new WebAssembly.Instance(new WebAssembly.Module(fs.readFileSync(WASM_FILE))).exports;
+  const wasm = (msg, sig, pk) => {
+    const mem = new Uint8Array(e.memory.buffer);
+    mem.set(pk, e.yawf_pk());
+    mem.set(sig, e.yawf_sm());
+    mem.set(msg, e.yawf_sm() + 64);
+    return e.yawf_open(64 + msg.length) === 0;
+  };
+  let mismatches = 0;
+  const same = (msg, sig, pk) => {
+    const a = nacl.sign.detached.verify(msg, sig, pk);
+    if (a !== wasm(msg, sig, pk)) mismatches++;
+    return a;
+  };
+  // RFC 8032 7.1 test 2
+  assert.equal(
+    same(
+      Buffer.from('72', 'hex'),
+      Buffer.from('92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00', 'hex'),
+      Buffer.from('3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c', 'hex'),
+    ),
+    true,
+  );
+  let nonCanonicalAccepted = 0;
+  for (let i = 0; i < 60; i++) {
+    const s = signed(i % 120);
+    assert.equal(same(s.msg, s.sig, s.pk), true);
+    for (const t of [s.sig, s.msg, s.pk]) {
+      if (!t.length) continue;
+      const c = new Uint8Array(t);
+      c[crypto.randomInt(c.length)] ^= 1 << crypto.randomInt(8);
+      same(t === s.msg ? c : s.msg, t === s.sig ? c : s.sig, t === s.pk ? c : s.pk);
+    }
+    // tweetnacl accepts S + L (no S < L check); the wasm must too
+    let S = 0n;
+    for (let j = 63; j >= 32; j--) S = (S << 8n) | BigInt(s.sig[j]);
+    if (S + L < 2n ** 256n) {
+      const s2 = new Uint8Array(s.sig);
+      let v = S + L;
+      for (let j = 32; j < 64; j++) (s2[j] = Number(v & 255n)), (v >>= 8n);
+      if (same(s.msg, s2, s.pk)) nonCanonicalAccepted++;
+    }
+    same(crypto.randomBytes(23), crypto.randomBytes(64), crypto.randomBytes(32));
+  }
+  const p = 2n ** 255n - 19n;
+  const enc = (y) => Uint8Array.from({ length: 32 }, (_, j) => Number((y >> BigInt(8 * j)) & 255n));
+  for (const pk of [enc(0n), enc(1n), enc(p - 1n), enc(p), enc(p + 1n), new Uint8Array(32).fill(255)]) {
+    const s = signed();
+    same(s.msg, s.sig, pk);
+  }
+  assert.equal(mismatches, 0);
+  assert.ok(nonCanonicalAccepted > 0);
 });

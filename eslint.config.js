@@ -3,6 +3,7 @@
 const js = require('@eslint/js');
 
 const nodeGlobals = {
+  WebAssembly: 'readonly',
   require: 'readonly',
   module: 'readonly',
   process: 'readonly',
@@ -36,6 +37,8 @@ const browserGlobals = {
   location: 'readonly',
   localStorage: 'readonly',
   btoa: 'readonly',
+  atob: 'readonly',
+  WebAssembly: 'readonly',
   Notification: 'readonly',
   WebSocket: 'readonly',
 };
