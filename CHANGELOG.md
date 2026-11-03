@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 3.2.0
 
 ### Added
 * Windows builds: NSIS installer and portable exe, built in CI on a Windows runner
