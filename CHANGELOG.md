@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## 3.1.0
+
+### Changed
+* Cold start uses roughly a quarter of the CPU it did (about 168s of renderer
+  CPU down to 42-48s on a large account). WhatsApp Web re-verifies tens of
+  thousands of contact key signatures in pure JS on every boot; YAWF now caches
+  the results and checks the rest with a bundled WebAssembly Ed25519 verifier
+  derived from TweetNaCl (`wasm/`)
+* Electron 45, dependencies updated
+* Idle reload only fires once the renderer has grown past 1.5GB
+* The local API server's Express dependency only loads when the API is enabled
+* Fewer full-page scans: the crash-text check stops once the chat list is up,
+  bridge DOM scans are debounced
+
+### Fixed
+* `yawf --quit` could silently do nothing when WhatsApp Web blocked unload
+
 ## 3.0.1
 
 ### Fixed
