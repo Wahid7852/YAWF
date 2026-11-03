@@ -17,7 +17,7 @@
   "prefs.startMinimized": "Minimiert in der Ablage starten",
   "prefs.autostart": "Beim Anmelden starten",
   "prefs.idleReload.label": "Speicher-Reset bei Inaktivität (Stunden)",
-  "prefs.idleReload.hint": "WhatsApp Web nach dieser Zeit ohne Eingabe neu laden. 0 deaktiviert dies.",
+  "prefs.idleReload.hint": "WhatsApp Web nach dieser Zeit ohne Eingabe neu laden, aber nur, wenn es über 1,5 GB gewachsen ist. 0 deaktiviert dies.",
 
   "phoneDialog.title": "Chat per Telefonnummer öffnen",
   "phoneDialog.hint": "Mit Ländervorwahl, ohne + oder Leerzeichen (z. B. 15551234567)",

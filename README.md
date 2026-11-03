@@ -75,7 +75,9 @@ multiple accounts at once.
 Grab a `.deb`, `.AppImage`, `.rpm`, or `.pacman` from the
 [Releases](https://github.com/Wahid7852/YAWF/releases) page, or:
 
-- **Arch (AUR)**: `yay -S yawf-bin`, packaging in [`packaging/aur`](packaging/aur)
+- **Arch**: `sudo pacman -U yawf-*.pacman`. The AUR package (`yawf-bin`)
+  isn't published yet, its PKGBUILD lives in [`packaging/aur`](packaging/aur)
+  if you'd rather `makepkg -si` it yourself
 - **Snap**, **Flatpak**: not published yet
 
 ## Development

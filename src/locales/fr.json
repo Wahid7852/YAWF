@@ -17,7 +17,7 @@
   "prefs.startMinimized": "Démarrer minimisé dans la zone de notification",
   "prefs.autostart": "Démarrer à la connexion",
   "prefs.idleReload.label": "Réinitialisation mémoire en cas d'inactivité (heures)",
-  "prefs.idleReload.hint": "Recharge WhatsApp Web après ce délai sans activité. 0 désactive cette option.",
+  "prefs.idleReload.hint": "Recharge WhatsApp Web après ce délai sans activité, seulement s'il dépasse 1,5 Go. 0 désactive cette option.",
 
   "phoneDialog.title": "Ouvrir un chat par numéro de téléphone",
   "phoneDialog.hint": "Indiquez l'indicatif du pays, sans + ni espaces (ex. 15551234567)",

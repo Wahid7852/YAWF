@@ -17,7 +17,7 @@
   "prefs.startMinimized": "Geminimaliseerd starten in systeemvak",
   "prefs.autostart": "Starten bij aanmelden",
   "prefs.idleReload.label": "Geheugenreset bij inactiviteit (uren)",
-  "prefs.idleReload.hint": "Herlaadt WhatsApp Web na deze tijd zonder invoer. 0 schakelt dit uit.",
+  "prefs.idleReload.hint": "Herlaadt WhatsApp Web na deze tijd zonder invoer, alleen als het groter is geworden dan 1,5 GB. 0 schakelt dit uit.",
 
   "phoneDialog.title": "Chat openen via telefoonnummer",
   "phoneDialog.hint": "Inclusief landcode, zonder + of spaties (bijv. 15551234567)",

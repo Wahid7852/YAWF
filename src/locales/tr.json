@@ -17,7 +17,7 @@
   "prefs.startMinimized": "Sistem tepsisinde küçültülmüş başlat",
   "prefs.autostart": "Oturum açılışında başlat",
   "prefs.idleReload.label": "Etkin olmama durumunda bellek sıfırlama (saat)",
-  "prefs.idleReload.hint": "Bu süre boyunca giriş olmazsa WhatsApp Web'i yeniden yükler. 0 devre dışı bırakır.",
+  "prefs.idleReload.hint": "Bu süre boyunca giriş olmazsa WhatsApp Web'i yeniden yükler, ancak yalnızca 1,5 GB'ı aştıysa. 0 devre dışı bırakır.",
 
   "phoneDialog.title": "Telefon numarasıyla sohbet aç",
   "phoneDialog.hint": "Ülke kodunu ekleyin, + veya boşluk olmadan (örn. 15551234567)",

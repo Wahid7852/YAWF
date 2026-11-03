@@ -17,7 +17,7 @@
   "prefs.startMinimized": "Spustit minimalizované v systémové liště",
   "prefs.autostart": "Spustit při přihlášení",
   "prefs.idleReload.label": "Reset paměti při nečinnosti (hodiny)",
-  "prefs.idleReload.hint": "Znovu načte WhatsApp Web po této době bez aktivity. 0 tuto funkci vypne.",
+  "prefs.idleReload.hint": "Znovu načte WhatsApp Web po této době bez aktivity, pouze pokud zabírá více než 1,5 GB. 0 tuto funkci vypne.",
 
   "phoneDialog.title": "Otevřít chat podle telefonního čísla",
   "phoneDialog.hint": "Včetně předvolby země, bez + nebo mezer (např. 15551234567)",

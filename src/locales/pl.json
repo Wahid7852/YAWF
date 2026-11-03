@@ -17,7 +17,7 @@
   "prefs.startMinimized": "Uruchamiaj zminimalizowane w zasobniku",
   "prefs.autostart": "Uruchamiaj przy logowaniu",
   "prefs.idleReload.label": "Reset pamięci przy bezczynności (godziny)",
-  "prefs.idleReload.hint": "Przeładuj WhatsApp Web po tym czasie bez aktywności. 0 wyłącza tę opcję.",
+  "prefs.idleReload.hint": "Przeładuj WhatsApp Web po tym czasie bez aktywności, tylko jeśli zajmuje ponad 1,5 GB. 0 wyłącza tę opcję.",
 
   "phoneDialog.title": "Otwórz czat po numerze telefonu",
   "phoneDialog.hint": "Podaj numer kierunkowy kraju, bez + ani spacji (np. 15551234567)",

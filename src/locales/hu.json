@@ -17,7 +17,7 @@
   "prefs.startMinimized": "Indítás kicsinyítve a tálcán",
   "prefs.autostart": "Indítás bejelentkezéskor",
   "prefs.idleReload.label": "Memória-visszaállítás inaktivitáskor (óra)",
-  "prefs.idleReload.hint": "Ennyi idő inaktivitás után újratölti a WhatsApp Webet. A 0 kikapcsolja.",
+  "prefs.idleReload.hint": "Ennyi idő inaktivitás után újratölti a WhatsApp Webet, de csak ha 1,5 GB fölé nőtt. A 0 kikapcsolja.",
 
   "phoneDialog.title": "Csevegés megnyitása telefonszám alapján",
   "phoneDialog.hint": "Add meg az országkódot, + jel és szóköz nélkül (pl. 15551234567)",

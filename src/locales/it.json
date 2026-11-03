@@ -17,7 +17,7 @@
   "prefs.startMinimized": "Avvia ridotto a icona nel vassoio",
   "prefs.autostart": "Avvia all'accesso",
   "prefs.idleReload.label": "Reset memoria per inattività (ore)",
-  "prefs.idleReload.hint": "Ricarica WhatsApp Web dopo questo tempo senza input. 0 disabilita l'opzione.",
+  "prefs.idleReload.hint": "Ricarica WhatsApp Web dopo questo tempo senza input, solo se supera 1,5 GB. 0 disabilita l'opzione.",
 
   "phoneDialog.title": "Apri chat per numero di telefono",
   "phoneDialog.hint": "Includi il prefisso internazionale, senza + o spazi (es. 15551234567)",
