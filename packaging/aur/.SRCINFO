@@ -13,6 +13,7 @@ pkgbase = yawf-bin
 	depends = libsecret
 	depends = xdg-utils
 	provides = yawf
+	conflicts = yawf
 	noextract = yawf-bin-3.1.0.AppImage
 	source = yawf-bin-3.1.0.AppImage::https://github.com/Wahid7852/YAWF/releases/download/v3.1.0/YAWF-3.1.0.AppImage
 	source = yawf.desktop

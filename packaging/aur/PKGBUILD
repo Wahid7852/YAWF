@@ -8,6 +8,7 @@ url="https://github.com/Wahid7852/YAWF"
 license=('GPL3')
 depends=('gtk3' 'nss' 'libxss' 'libxtst' 'at-spi2-core' 'libsecret' 'xdg-utils')
 provides=('yawf')
+conflicts=('yawf')
 source=("$pkgname-$pkgver.AppImage::https://github.com/Wahid7852/YAWF/releases/download/v$pkgver/YAWF-$pkgver.AppImage"
         "yawf.desktop"
         "yawf.png")
